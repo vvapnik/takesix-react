@@ -1,0 +1,274 @@
+.viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  height: 100%;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  position: relative;
+  z-index: 2;
+}
+
+.crumbItem {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.crumbSep {
+  color: #b0b8c4;
+  padding: 0 6px;
+  font-size: 0.8rem;
+}
+
+.crumb {
+  all: unset;
+  cursor: pointer;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: #8fa3b8;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.crumb:hover:not(:disabled) {
+  color: #3d6aff;
+  background: #e8eeff;
+}
+
+.crumb:disabled { cursor: default; }
+.crumbActive { color: #1a2332; }
+
+/* Full-screen backdrop — click outside the card to zoom out */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  cursor: zoom-out;
+  z-index: 1;
+}
+
+/* Slide — the main content area. Stays mounted; FLIP transforms this element. */
+.slide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  will-change: transform;
+  position: relative;
+  z-index: 2;
+}
+
+/* When nested: looks exactly like an enlarged BlockCard */
+.slideCard {
+  background: #ffffff;
+  border: 1px solid #d0d7e2;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* Header — identical sizing to BlockCard .header */
+.slideHeader {
+  padding: 20px 24px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.slideIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.slideHeaderText {
+  display: flex;
+  flex-direction: column;
+}
+
+.slideTitle {
+  margin: 0 0 5px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a2332;
+  letter-spacing: 0.01em;
+}
+
+.slideDescription {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #7a8a9e;
+  line-height: 1.4;
+}
+
+/* Grid container */
+.gridArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+/* SVG arrow overlay */
+.arrowSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 3;
+}
+
+/* Arrows */
+.arrow {
+  fill: none;
+  stroke: #3d6aff;
+  stroke-width: 2;
+  stroke-opacity: 0.7;
+}
+
+.arrowIndirect {
+  stroke-dasharray: 6 4;
+}
+
+.arrowHead {
+  fill: #3d6aff;
+}
+
+.arrowLabel {
+  font-size: 11px;
+  font-weight: 500;
+  fill: #3d6aff;
+  paint-order: stroke;
+  stroke: #f0f2f5;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.empty {
+  margin: auto;
+  color: #8fa3b8;
+  font-size: 0.85rem;
+}
+
+/* Nested: dashed border matching BlockCard .childrenSection */
+.gridAreaNested {
+  margin: 0 10px 10px;
+  border: 1.5px dashed #c4cedc;
+  border-radius: 7px;
+  background: #f7f9fc;
+  padding: 8px;
+}
+
+/* Grid */
+.grid {
+  flex: 1;
+  display: grid;
+  gap: 40px;
+  align-content: space-evenly;
+  min-height: 0;
+}
+
+/* Layout toggle */
+.layoutToggle {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.layoutBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #d0d7e2;
+  border-radius: 6px;
+  background: #fff;
+  color: #8fa3b8;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.layoutBtn:hover {
+  border-color: #b0bfda;
+  color: #1a2332;
+}
+
+.layoutBtnActive {
+  background: #1a2332;
+  border-color: #1a2332;
+  color: #fff;
+}
+
+/* List layout grid overrides */
+.grid[data-layout='list'] {
+  grid-template-columns: 1fr !important;
+  justify-content: stretch !important;
+  align-content: start;
+  gap: 10px;
+}
+
+/* Add block */
+.addBlock {
+  border: 1.5px dashed #c4cedc;
+  border-radius: 10px;
+  background: transparent;
+  color: #b0bfda;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  min-height: 80px;
+}
+
+.addBlock:hover {
+  border-color: #3d6aff;
+  color: #3d6aff;
+  background: #f0f4ff;
+}
+
+.grid[data-count='1'] { grid-template-columns: auto; justify-content: center; }
+.grid[data-count='2'] { grid-template-columns: repeat(2, auto); justify-content: space-evenly; }
+.grid[data-count='3'] { grid-template-columns: repeat(3, auto); justify-content: space-evenly; }
+.grid[data-count='4'] { grid-template-columns: repeat(2, auto); justify-content: space-evenly; }
+.grid[data-count='5'] { grid-template-columns: repeat(3, auto); justify-content: space-evenly; }
+.grid[data-count='6'] { grid-template-columns: repeat(3, auto); justify-content: space-evenly; }
+
+/* Circle layout */
+.circleGrid {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.circleItem {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 220px;
+}
+
+.addBlockCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  min-height: unset;
+}

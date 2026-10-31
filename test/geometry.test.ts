@@ -36,6 +36,27 @@ describe('routeArrows', () => {
     expect(arrow!.key).toBe('a|b')
     expect(arrow!.d).toMatch(/^M 100 30 C .* 200 30$/)
     expect(arrow!.mid).toEqual({ x: 150, y: 30 })
+    expect(arrow!.vertical).toBe(false)
+  })
+
+  it('marks arrows between stacked cards as vertical', () => {
+    const rects = new Map([['a', rect(0, 0)], ['b', rect(0, 100)]])
+    const [down] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b' }], rects, container)
+    expect(down!.vertical).toBe(true)
+    // an arc around a card in between is not vertical
+    const around = new Map([['a', rect(0, 0)], ['m', rect(200, 0)], ['b', rect(400, 0)]])
+    const [arc] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b' }], around, container)
+    expect(arc!.vertical).toBe(false)
+  })
+
+  it('ends at the base of an arrowhead, which stops short of the card', () => {
+    // 200 (card edge) - 4 (gap) - 10 (head length) = 186
+    const rects = new Map([['a', rect(100, 100)], ['b', rect(300, 100)]])
+    const box = rect(100, 100, 800, 800)
+    const [end] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b', headAtEnd: true }], rects, box)
+    expect(end!.d).toMatch(/^M 100 30 C .* 186 30$/)
+    const [both] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b', headAtStart: true, headAtEnd: true }], rects, box)
+    expect(both!.d).toMatch(/^M 114 30 C .* 186 30$/)
   })
 
   it('skips arrows whose cards are not on screen', () => {

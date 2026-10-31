@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import {
   MAX_BLOCKS_PER_LEVEL,
   buildIndex,
@@ -9,8 +9,8 @@ import {
   type TakeSixDocument,
   type VisibleLink,
 } from '@takesix/core'
-import { BlockCard, type CardRect } from './BlockCard.js'
-import { routeArrows, type ArrowPath, type Rect } from './geometry.js'
+import { BlockCard, type CardRect, type DropPosition } from './BlockCard.js'
+import { HEAD_LENGTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
 import { CircleLayoutIcon, ListIcon, PlusIcon, TilesIcon } from './icons.js'
 import styles from './Viewer.module.css'
 
@@ -24,6 +24,8 @@ export interface ViewerActions {
   setLayout: (parentId: string | null, layout: Layout) => void
   /** Links `fromId` → `toId`, or removes that link when it exists. */
   toggleLink: (fromId: string, toId: string) => void
+  /** Moves a block to position `index` among the children of `parentId`. */
+  move: (id: string, parentId: string | null, index: number) => void
 }
 
 interface Props {
@@ -70,6 +72,8 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   const markerId = useId()
 
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [drop, setDrop] = useState<{ id: string; position: DropPosition } | null>(null)
   const [arrowPaths, setArrowPaths] = useState<ArrowPath[]>([])
   const [circleSize, setCircleSize] = useState({ w: 0, h: 0 })
   const [path, setPath] = useState<PathEntry[]>([])
@@ -175,7 +179,13 @@ export function Viewer({ document: doc, editing, actions }: Props) {
       const rects = new Map<string, Rect>()
       for (const [id, el] of cardElsMap.current) rects.set(id, toRect(el.getBoundingClientRect()))
       setArrowPaths(routeArrows(
-        links.map(l => ({ key: l.key, fromId: l.from, toId: l.to })),
+        links.map(l => ({
+          key: l.key,
+          fromId: l.from,
+          toId: l.to,
+          headAtStart: l.direction === 'both',
+          headAtEnd: l.direction !== 'none',
+        })),
         rects,
         toRect(container.getBoundingClientRect()),
       ))
@@ -192,13 +202,16 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     compute()
   }, [blocks, links, layoutKey, editing, circleSize, sizeTick, settleTick])
 
-  // Re-route arrows when the viewer is resized
+  // Re-route arrows when the viewer or any card changes size
+  const resizeObserver = useRef<ResizeObserver | null>(null)
   useEffect(() => {
     const el = gridAreaRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(() => setSizeTick(t => t + 1))
+    resizeObserver.current = ro
     ro.observe(el)
-    return () => ro.disconnect()
+    for (const card of cardElsMap.current.values()) ro.observe(card)
+    return () => { ro.disconnect(); resizeObserver.current = null }
   }, [])
 
   useEffect(() => {
@@ -215,8 +228,14 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   }, [currentLayout])
 
   const registerCard = useCallback((id: string, el: HTMLDivElement | null) => {
-    if (el) cardElsMap.current.set(id, el)
-    else cardElsMap.current.delete(id)
+    const old = cardElsMap.current.get(id)
+    if (old) resizeObserver.current?.unobserve(old)
+    if (el) {
+      cardElsMap.current.set(id, el)
+      resizeObserver.current?.observe(el)
+    } else {
+      cardElsMap.current.delete(id)
+    }
   }, [])
 
   const arrows: Arrow[] = useMemo(() => {
@@ -284,6 +303,27 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     }
   }
 
+  function endDrag() {
+    setDragId(null)
+    setDrop(null)
+  }
+
+  // Drop on the current indicator. Works over the gaps too, since the
+  // indicator stays on the last card the pointer was over.
+  function commitDrop() {
+    if (dragId && drop && drop.id !== dragId) {
+      const rest = blocks.map(b => b.id).filter(id => id !== dragId)
+      const at = rest.indexOf(drop.id) + (drop.position === 'after' ? 1 : 0)
+      if (at !== blocks.findIndex(b => b.id === dragId)) actions.move(dragId, parentId, at)
+    }
+    endDrag()
+  }
+
+  const dropZone = editing ? {
+    onDragOver: (e: React.DragEvent) => { if (dragId) e.preventDefault() },
+    onDrop: (e: React.DragEvent) => { e.preventDefault(); commitDrop() },
+  } : {}
+
   function connectTarget(id: string) {
     if (!connectingFrom) return
     actions.toggleLink(connectingFrom, id)
@@ -308,6 +348,14 @@ export function Viewer({ document: doc, editing, actions }: Props) {
       onStartConnect={id => setConnectingFrom(id === connectingFrom ? null : id)}
       onConnectTarget={connectTarget}
       onRegisterEl={registerCard}
+      isDragged={dragId === block.id}
+      dropPosition={dragId && drop?.id === block.id && drop.id !== dragId ? drop.position : null}
+      onDragStartBlock={setDragId}
+      onDragOverBlock={(id, position) => {
+        if (!dragId) return
+        if (drop?.id !== id || drop.position !== position) setDrop({ id, position })
+      }}
+      onDragEndBlock={endDrag}
     />
   )
 
@@ -323,7 +371,16 @@ export function Viewer({ document: doc, editing, actions }: Props) {
 
   return (
     <div className={styles.viewer}>
-      <nav className={styles.breadcrumb} aria-label="Breadcrumb">
+      {/* Only below the top level: there the header already names the document.
+          The strip around the crumbs zooms out one level, like the backdrop. */}
+      {isNested && <nav
+        className={styles.breadcrumb}
+        aria-label="Breadcrumb"
+        onClick={e => {
+          if ((e.target as HTMLElement).closest('button')) return
+          if (!isAnimating.current) goBack(livePath.length - 1)
+        }}
+      >
         {crumbs.map((crumb, i) => (
           <span key={i} className={styles.crumbItem}>
             {i > 0 && <span className={styles.crumbSep}>/</span>}
@@ -337,7 +394,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
             </button>
           </span>
         ))}
-      </nav>
+      </nav>}
 
       {isNested && (
         <div
@@ -352,15 +409,19 @@ export function Viewer({ document: doc, editing, actions }: Props) {
         ref={slideRef}
         className={`${styles.slide} ${isNested ? styles.slideCard : ''}`}
       >
-        {parent && (
-          <div className={styles.slideHeader}>
-            {parent.icon && <span className={styles.slideIcon}>{parent.icon}</span>}
-            <div className={styles.slideHeaderText}>
-              <h2 className={styles.slideTitle}>{parent.title}</h2>
-              {parent.description && <p className={styles.slideDescription}>{parent.description}</p>}
+        {/* Header: the document on the top level, the opened block below it */}
+        {(() => {
+          const head = parent ?? { title: doc.title, description: doc.description, icon: undefined }
+          return (
+            <div className={`${styles.slideHeader} ${parent ? '' : styles.slideHeaderTop}`}>
+              {head.icon && <span className={styles.slideIcon}>{head.icon}</span>}
+              <div className={styles.slideHeaderText}>
+                <h1 className={styles.slideTitle}>{head.title}</h1>
+                {head.description && <p className={styles.slideDescription}>{head.description}</p>}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         <div ref={gridAreaRef} className={`${styles.gridArea} ${isNested ? styles.gridAreaNested : ''}`}>
           {editing && (
@@ -381,7 +442,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
           )}
 
           {currentLayout === 'circle' ? (
-            <div ref={circleContainerRef} className={styles.circleGrid}>
+            <div ref={circleContainerRef} className={styles.circleGrid} {...dropZone}>
               {blocks.map((block, i) => {
                 const pos = circlePositions[i]
                 return (
@@ -401,8 +462,19 @@ export function Viewer({ document: doc, editing, actions }: Props) {
               className={styles.grid}
               data-layout={currentLayout}
               data-count={currentLayout === 'tiles' ? blocks.length + (canAdd ? 1 : 0) : undefined}
+              {...dropZone}
             >
-              {blocks.map(block => renderCard(block, currentLayout))}
+              {/* In a list, spacers between rows give way first when space runs out,
+                  so cards keep their full height (see .listSpacer). */}
+              {blocks.map((block, i) => (
+                <Fragment key={block.id}>
+                  {currentLayout === 'list' && i > 0 && <div className={styles.listSpacer} aria-hidden="true" />}
+                  {renderCard(block, currentLayout)}
+                </Fragment>
+              ))}
+              {canAdd && currentLayout === 'list' && blocks.length > 0 && (
+                <div className={styles.listSpacer} aria-hidden="true" />
+              )}
               {canAdd && addButton()}
             </div>
           )}
@@ -414,8 +486,9 @@ export function Viewer({ document: doc, editing, actions }: Props) {
           {arrows.length > 0 && (
             <svg className={styles.arrowSvg} aria-hidden="true">
               <defs>
-                <marker id={markerId} markerWidth="10" markerHeight="8" refX="5" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                  <path d="M 0 0 L 10 4 L 0 8 Z" className={styles.arrowHead} />
+                {/* Base of the head at the path end (refX 0): the head continues the line. */}
+                <marker id={markerId} markerWidth={HEAD_LENGTH} markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+                  <path d={`M 0 0 L ${HEAD_LENGTH} 4 L 0 8 Z`} className={styles.arrowHead} />
                 </marker>
               </defs>
               {arrows.map(a => (
@@ -427,7 +500,14 @@ export function Viewer({ document: doc, editing, actions }: Props) {
                     markerStart={a.link.direction === 'both' ? `url(#${markerId})` : undefined}
                   />
                   {a.label && (
-                    <text x={a.mid.x} y={a.mid.y} className={styles.arrowLabel} textAnchor="middle" dominantBaseline="middle">
+                    // Vertical arrows often cross a narrow gap between rows: label beside the arrow.
+                    <text
+                      x={a.vertical ? a.mid.x + 8 : a.mid.x}
+                      y={a.mid.y}
+                      className={styles.arrowLabel}
+                      textAnchor={a.vertical ? 'start' : 'middle'}
+                      dominantBaseline="middle"
+                    >
                       {a.label}
                     </text>
                   )}

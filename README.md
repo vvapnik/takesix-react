@@ -33,26 +33,37 @@ export function Diagram({ json }: { json: string }) {
 
 function Editor({ initial }: { initial: TakeSixDocument }) {
   const [doc, setDoc] = useState(initial)
+  const [editing, setEditing] = useState(false)
   return (
-    <div style={{ height: 600 }}>
-      <TakeSix document={doc} onChange={setDoc} />
-    </div>
+    <>
+      <button onClick={() => setEditing(e => !e)}>{editing ? 'Done' : 'Edit'}</button>
+      <div style={{ height: 600 }}>
+        <TakeSix document={doc} onChange={setDoc} editing={editing} />
+      </div>
+    </>
   )
 }
 ```
 
-`TakeSix` fills its container, so give the container a height.
+`TakeSix` fills its container, so give the container a height. It is only the
+view: the Edit toggle belongs to your app (a toolbar, a menu).
 
 ### Props
 
 | Prop | Type | Meaning |
 |---|---|---|
 | `document` | `TakeSixDocument` | The diagram. Validate untrusted input with `parseDocument` first. |
-| `onChange` | `(doc) => void` | Receives the edited document. Without it the diagram is read-only and the Edit button is hidden. |
-| `defaultEditing` | `boolean` | Start in edit mode. |
+| `onChange` | `(doc) => void` | Receives the edited document. Without it the diagram is read-only. |
+| `editing` | `boolean` | Show the edit controls. Ignored without `onChange`. |
 | `className` | `string` | Extra class for the root element. |
 
 ### What is shown
+
+- **One level per screen**, with a breadcrumb. There is no header for the
+  opened block: if a level needs a title or summary, make it the first block.
+- **Cards** show icon, title and description, and "N more inside" when the
+  block has children (direct children only). Click anywhere on such a card to
+  open it; text stays selectable.
 
 - **Arrows**: a link between nested blocks is drawn between their ancestors on
   the current screen. Several links between the same pair of blocks merge into
@@ -81,6 +92,11 @@ npm run dev      # demo app from examples/
 npm test
 npm run build
 ```
+
+## AI-assisted development
+
+This project is developed with the help of [Claude Code](https://claude.com/claude-code)
+(Anthropic). Commits are authored and reviewed by the maintainer.
 
 ## License
 

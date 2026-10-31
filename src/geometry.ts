@@ -21,6 +21,26 @@ export interface ArrowRequest {
   key: string
   fromId: string
   toId: string
+  /** An arrowhead is drawn at this end: the path stops at the head's base, short of the card. */
+  headAtStart?: boolean
+  headAtEnd?: boolean
+}
+
+/** Space between an arrowhead's tip and the card it points at. */
+export const HEAD_GAP = 4
+
+/** Length of the arrowhead. The path ends at its base and the head is drawn
+    beyond it, so the line never shows through the tip. */
+export const HEAD_LENGTH = 10
+
+/** Moves a point on a card edge away from the card, along the edge's outward normal. */
+function away(p: Point, edge: Edge, distance: number): Point {
+  switch (edge) {
+    case 'right':  return { x: p.x + distance, y: p.y }
+    case 'left':   return { x: p.x - distance, y: p.y }
+    case 'bottom': return { x: p.x, y: p.y + distance }
+    case 'top':    return { x: p.x, y: p.y - distance }
+  }
 }
 
 export interface ArrowPath {
@@ -29,6 +49,8 @@ export interface ArrowPath {
   d: string
   /** Middle of the curve, for the label. */
   mid: Point
+  /** Runs from one card's top/bottom edge to the other's: put the label beside it, not on it. */
+  vertical: boolean
 }
 
 // Distribute N connection points symmetrically around the center of an edge
@@ -127,23 +149,21 @@ export function bezierMid(p0: Point, c1: Point, c2: Point, p3: Point): Point {
 export function routeArrows(requests: ArrowRequest[], rects: Map<string, Rect>, container: Rect): ArrowPath[] {
   const origin = { x: container.left, y: container.top }
 
-  interface Conn {
-    key: string
-    fromId: string
-    toId: string
+  interface Conn extends ArrowRequest {
     fromRect: Rect
     toRect: Rect
     exitEdge: Edge
     entryEdge: Edge
   }
   const conns: Conn[] = []
-  for (const { key, fromId, toId } of requests) {
+  for (const request of requests) {
+    const { fromId, toId } = request
     const fromRect = rects.get(fromId)
     const toRect = rects.get(toId)
     if (!fromRect || !toRect) continue
     const obstacles: Rect[] = []
     for (const [id, r] of rects) if (id !== fromId && id !== toId) obstacles.push(r)
-    conns.push({ key, fromId, toId, fromRect, toRect, ...determineEdges(fromRect, toRect, obstacles) })
+    conns.push({ ...request, fromRect, toRect, ...determineEdges(fromRect, toRect, obstacles) })
   }
 
   const pools = new Map<string, Array<{ ci: number; role: 'exit' | 'entry' }>>()
@@ -162,13 +182,14 @@ export function routeArrows(requests: ArrowRequest[], rects: Map<string, Rect>, 
     const entryPool = pools.get(`${c.toId}-${c.entryEdge}`)!
     const exitIdx = exitPool.findIndex(s => s.ci === ci && s.role === 'exit')
     const entryIdx = entryPool.findIndex(s => s.ci === ci && s.role === 'entry')
-    const p1 = edgePoint(c.fromRect, c.exitEdge, exitIdx, exitPool.length, origin)
-    const p2 = edgePoint(c.toRect, c.entryEdge, entryIdx, entryPool.length, origin)
+    const p1 = away(edgePoint(c.fromRect, c.exitEdge, exitIdx, exitPool.length, origin), c.exitEdge, c.headAtStart ? HEAD_GAP + HEAD_LENGTH : 0)
+    const p2 = away(edgePoint(c.toRect, c.entryEdge, entryIdx, entryPool.length, origin), c.entryEdge, c.headAtEnd ? HEAD_GAP + HEAD_LENGTH : 0)
     const [c1, c2] = controlPoints(c.fromRect, c.toRect, origin, c.exitEdge, c.entryEdge, p1, p2)
     return {
       key: c.key,
       d: `M ${p1.x} ${p1.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`,
       mid: bezierMid(p1, c1, c2, p2),
+      vertical: (c.exitEdge === 'top' && c.entryEdge === 'bottom') || (c.exitEdge === 'bottom' && c.entryEdge === 'top'),
     }
   })
 }

@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, createEvent, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -9,6 +9,7 @@ function sampleDoc(): TakeSixDocument {
   return {
     takesix: '1.0',
     title: 'Shop',
+    description: 'Online shop architecture',
     blocks: [
       { id: 'web', title: 'Web app', description: 'Frontend' },
       {
@@ -25,27 +26,49 @@ function sampleDoc(): TakeSixDocument {
   }
 }
 
-/** Renders an editable TakeSix and exposes the latest document. */
+/** Renders TakeSix in edit mode and exposes the latest document. */
 function renderEditable(initial = sampleDoc()) {
   const latest = { doc: initial }
   const onChange = vi.fn((d: TakeSixDocument) => { latest.doc = d })
   function Harness() {
     const [doc, setDoc] = useState(initial)
-    return <TakeSix document={doc} onChange={d => { onChange(d); setDoc(d) }} />
+    return <TakeSix document={doc} onChange={d => { onChange(d); setDoc(d) }} editing />
   }
   render(<Harness />)
   return { latest, onChange, user: userEvent.setup() }
 }
 
-const crumbs = () => within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getAllByRole('button').map(b => b.textContent)
+// No breadcrumb on the top level: [] there.
+const crumbs = () => {
+  const nav = screen.queryByRole('navigation', { name: 'Breadcrumb' })
+  return nav ? within(nav).getAllByRole('button').map(b => b.textContent) : []
+}
 const titles = () => screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent)
 
 describe('TakeSix (read-only)', () => {
-  it('shows the top level and no edit controls', () => {
+  it('shows the top level as a pure view', () => {
     render(<TakeSix document={sampleDoc()} />)
-    expect(crumbs()).toEqual(['Shop'])
+    expect(crumbs()).toEqual([])
     expect(titles()).toEqual(['Web app', 'API', 'Database'])
-    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add block' })).toBeNull()
+  })
+
+  it('shows the document title and description as the top-level header', () => {
+    render(<TakeSix document={sampleDoc()} />)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Shop')
+    expect(screen.getByText('Online shop architecture')).toBeInTheDocument()
+  })
+
+  it('counts direct children instead of previewing them', () => {
+    const doc = sampleDoc()
+    doc.blocks[1]!.children![1]!.children = [{ id: 'deep', title: 'Deep' }]
+    render(<TakeSix document={doc} />)
+    expect(screen.getByRole('button', { name: 'Zoom into API' })).toHaveTextContent('2 more inside')
+    expect(screen.queryByText('Auth')).toBeNull()
+  })
+
+  it('ignores editing without onChange', () => {
+    render(<TakeSix document={sampleDoc()} editing />)
     expect(screen.queryByRole('button', { name: 'Add block' })).toBeNull()
   })
 
@@ -55,13 +78,60 @@ describe('TakeSix (read-only)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
     expect(crumbs()).toEqual(['Shop', 'API'])
-    // header of the opened block + its children
-    expect(titles()).toEqual(['API', 'Auth', 'Orders'])
+    expect(titles()).toEqual(['Auth', 'Orders'])
+    // the header now describes the opened block
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('API')
 
     await user.click(screen.getByRole('button', { name: 'Shop' }))
     // zoom-out finishes after its animation timeout
     await act(() => new Promise(r => setTimeout(r, 400)))
-    expect(crumbs()).toEqual(['Shop'])
+    expect(crumbs()).toEqual([])
+  })
+
+  it('zooms out on a click on the breadcrumb strip, but not on the current crumb', async () => {
+    const user = userEvent.setup()
+    render(<TakeSix document={sampleDoc()} />)
+    await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
+
+    await user.click(screen.getByRole('button', { name: 'API' }))
+    expect(crumbs()).toEqual(['Shop', 'API'])
+
+    await user.click(screen.getByRole('navigation', { name: 'Breadcrumb' }))
+    await act(() => new Promise(r => setTimeout(r, 400)))
+    expect(crumbs()).toEqual([])
+  })
+
+  it('opens a block on a click anywhere on its card, but not on its text', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<TakeSix document={sampleDoc()} />)
+    const card = () => container.querySelector('[data-block-id="api"]') as HTMLElement
+
+    await user.click(screen.getByRole('heading', { name: 'API' }))
+    expect(crumbs()).toEqual([])
+
+    await user.click(card())
+    expect(crumbs()).toEqual(['Shop', 'API'])
+  })
+
+  it('does not open a block while text in it is selected', () => {
+    const { container } = render(<TakeSix document={sampleDoc()} />)
+    const card = container.querySelector('[data-block-id="api"]') as HTMLElement
+    const title = screen.getByRole('heading', { name: 'API' })
+    window.getSelection()!.selectAllChildren(title)
+
+    // The click that ends a drag-selection arrives with the selection still in place.
+    fireEvent.click(card)
+    expect(crumbs()).toEqual([])
+    window.getSelection()!.removeAllRanges()
+  })
+
+  it('does not zoom from cards without children', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<TakeSix document={sampleDoc()} />)
+    const card = container.querySelector('[data-block-id="db"]') as HTMLElement
+    expect(card.className).not.toMatch(/cardZoomable/)
+    await user.click(card)
+    expect(crumbs()).toEqual([])
   })
 
   it('shows an empty state', () => {
@@ -71,16 +141,14 @@ describe('TakeSix (read-only)', () => {
 })
 
 describe('TakeSix (editing)', () => {
-  it('toggles edit mode', async () => {
-    const { user } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
-    expect(screen.getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true')
+  it('shows edit controls', () => {
+    renderEditable()
     expect(screen.getByRole('button', { name: 'Add block' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete API' })).toBeInTheDocument()
   })
 
   it('adds blocks until the level is full', async () => {
     const { user, latest } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
     for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'Add block' }))
     expect(latest.doc.blocks).toHaveLength(6)
     expect(screen.queryByRole('button', { name: 'Add block' })).toBeNull()
@@ -89,7 +157,6 @@ describe('TakeSix (editing)', () => {
 
   it('deletes a block with its links', async () => {
     const { user, latest } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
     await user.click(screen.getByRole('button', { name: 'Delete Web app' }))
     expect(latest.doc.blocks.map(b => b.id)).toEqual(['api', 'db'])
     expect(latest.doc.links).toBeUndefined()
@@ -97,7 +164,6 @@ describe('TakeSix (editing)', () => {
 
   it('renames a block and ignores an empty title', async () => {
     const { user, latest } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
     const title = screen.getByRole('heading', { name: 'Database' })
 
     await user.clear(title)
@@ -112,7 +178,6 @@ describe('TakeSix (editing)', () => {
 
   it('links two blocks and unlinks them again', async () => {
     const { user, latest } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
 
     await user.click(screen.getByRole('button', { name: 'Connect from API' }))
     await user.click(screen.getByRole('button', { name: 'Connect to Database' }))
@@ -123,9 +188,40 @@ describe('TakeSix (editing)', () => {
     expect(latest.doc.links?.map(l => [l.from, l.to])).toEqual([['api', 'db']])
   })
 
+  it('reorders blocks by dragging the handle', () => {
+    const { latest } = renderEditable()
+    const card = (id: string) => document.querySelector(`[data-block-id="${id}"]`) as HTMLElement
+    const handle = (id: string) => card(id).querySelector('[data-drag-handle]') as HTMLElement
+    const dataTransfer = { setData: () => {}, effectAllowed: '' }
+
+    // Without holding the handle the card does not start a drag
+    expect(card('db')).toHaveAttribute('draggable', 'false')
+
+    fireEvent.pointerDown(handle('db'))
+    expect(card('db')).toHaveAttribute('draggable', 'true')
+    fireEvent.dragStart(card('db'), { dataTransfer })
+    // jsdom rects are all zero and its drag events carry no coordinates:
+    // set clientX by hand, left of the middle means "before"
+    const over = createEvent.dragOver(card('web'), { dataTransfer })
+    Object.defineProperty(over, 'clientX', { value: -1 })
+    fireEvent(card('web'), over)
+    expect(card('web')).toHaveAttribute('data-drop', 'before')
+    fireEvent.drop(card('web'), { dataTransfer })
+    fireEvent.dragEnd(card('db'), { dataTransfer })
+
+    expect(latest.doc.blocks.map(b => b.id)).toEqual(['db', 'web', 'api'])
+    expect(card('web')).not.toHaveAttribute('data-drop')
+  })
+
+  it('does not open a block from its drag handle', async () => {
+    const { user } = renderEditable()
+    const handle = document.querySelector('[data-block-id="api"] [data-drag-handle]') as HTMLElement
+    await user.click(handle)
+    expect(crumbs()).toEqual([])
+  })
+
   it('stores the top-level layout in the document', async () => {
     const { user, latest } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
     await user.click(screen.getByRole('button', { name: 'List layout' }))
     expect(latest.doc.layout).toBe('list')
     expect(screen.getByRole('button', { name: 'List layout' })).toHaveAttribute('aria-pressed', 'true')
@@ -133,7 +229,6 @@ describe('TakeSix (editing)', () => {
 
   it('adds a first child and opens the block', async () => {
     const { user, latest } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'Edit' }))
     await user.click(screen.getByRole('button', { name: 'Add child to Database' }))
     expect(getLevel(latest.doc, 'db')).toHaveLength(1)
     expect(crumbs()).toEqual(['Shop', 'Database'])
@@ -141,12 +236,12 @@ describe('TakeSix (editing)', () => {
 
   it('leaves a level that was deleted from outside', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(<TakeSix document={sampleDoc()} onChange={() => {}} />)
+    const { rerender } = render(<TakeSix document={sampleDoc()} />)
     await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
     expect(crumbs()).toEqual(['Shop', 'API'])
 
     const doc = sampleDoc()
-    rerender(<TakeSix document={{ ...doc, blocks: doc.blocks.filter(b => b.id !== 'api'), links: [] }} onChange={() => {}} />)
-    expect(crumbs()).toEqual(['Shop'])
+    rerender(<TakeSix document={{ ...doc, blocks: doc.blocks.filter(b => b.id !== 'api'), links: [] }} />)
+    expect(crumbs()).toEqual([])
   })
 })

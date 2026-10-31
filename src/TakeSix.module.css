@@ -1,49 +1,10 @@
 .takeSix {
   height: 100%;
   min-height: 0;
-  padding: 48px 60px 44px;
+  padding: 12px 40px 24px;
   box-sizing: border-box;
   background: #f0f2f5;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   position: relative;
   overflow: hidden;
-}
-
-.modeToggle {
-  position: absolute;
-  top: 12px;
-  right: 16px;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  border: 1px solid #d0d7e2;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #5a6a7e;
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
-  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
-  font-family: inherit;
-}
-
-.modeToggle:hover {
-  border-color: #b0bfda;
-  color: #1a2332;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.modeToggleEdit {
-  background: #1a2332;
-  border-color: #1a2332;
-  color: #ffffff;
-}
-
-.modeToggleEdit:hover {
-  background: #2a3a52;
-  border-color: #2a3a52;
-  color: #ffffff;
 }

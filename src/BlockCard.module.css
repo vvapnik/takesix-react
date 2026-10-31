@@ -38,7 +38,7 @@
 .connectBtn {
   position: absolute;
   top: 8px;
-  left: 8px;
+  right: 34px;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -106,6 +106,58 @@
   cursor: pointer;
 }
 
+/* Edit mode: room for the drag handle on the left */
+.cardEditing {
+  padding-left: 18px;
+}
+
+/* Tall strip of dots along the left edge: grab it to drag the block */
+.dragHandle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 18px;
+  cursor: grab;
+  border-right: 1px solid #e8edf4;
+  background-color: #f7f9fc;
+  background-image: radial-gradient(circle, #b0bfda 1.2px, transparent 1.6px);
+  background-size: 6px 6px;
+  background-position: 3px 3px;
+  border-radius: 10px 0 0 10px;
+  z-index: 2;
+  transition: background-color 0.15s;
+}
+
+.dragHandle:hover {
+  background-color: #eef2fb;
+  background-image: radial-gradient(circle, #3d6aff 1.2px, transparent 1.6px);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.cardDragged {
+  opacity: 0.4;
+}
+
+/* Drop indicator: a line just outside the card, on the side the block lands */
+.card[data-drop='before'][data-axis='y'] { box-shadow: 0 -4px 0 -1px #3d6aff; }
+.card[data-drop='after'][data-axis='y'] { box-shadow: 0 4px 0 -1px #3d6aff; }
+.card[data-drop='before'][data-axis='x'] { box-shadow: -4px 0 0 -1px #3d6aff; }
+.card[data-drop='after'][data-axis='x'] { box-shadow: 4px 0 0 -1px #3d6aff; }
+
+.cardZoomable {
+  cursor: zoom-in;
+}
+
+/* Text stays selectable: text cursor, and clicks on it do not zoom */
+.title,
+.description {
+  cursor: text;
+}
+
 .card:hover {
   border-color: #b0bfda;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
@@ -157,14 +209,9 @@
   border-bottom: none;
 }
 
-.cardList .childrenSection {
-  border-top: none;
-  border-left: 1px solid #e8edf4;
-  margin: 0;
-  padding: 12px 16px;
-  align-items: center;
-  min-width: 120px;
-  max-width: 200px;
+.cardList .inside {
+  padding: 0 20px;
+  align-self: center;
 }
 
 .cardList .addChildBtn {
@@ -213,81 +260,26 @@
   background: rgba(61, 106, 255, 0.05);
 }
 
-/* Children section — architecture "group" look with dashed border */
-.childrenSection {
+/* "N more inside": the only hint of what the block holds */
+.inside {
   all: unset;
-  cursor: pointer;
-  display: block;
-  margin: 0 10px 10px;
-  border: 1.5px dashed #c4cedc;
-  border-radius: 7px;
-  padding: 8px;
-  background: #f7f9fc;
-  transition: border-color 0.2s, background 0.2s;
+  cursor: inherit;
+  align-self: flex-start;
+  padding: 0 24px 16px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #8fa3b8;
+  white-space: nowrap;
+  transition: color 0.15s;
 }
 
-.childrenSection:hover {
-  border-color: #3d6aff;
-  background: #f0f4ff;
+.cardZoomable:hover .inside {
+  color: #3d6aff;
 }
 
-/* Mini grid — zoom makes it look identical to main at small scale */
-.miniGrid {
-  zoom: 0.3;
-  display: grid;
-  gap: 20px;
-}
-
-.miniGrid[data-count='1'] { grid-template-columns: 1fr; }
-.miniGrid[data-count='2'] { grid-template-columns: repeat(2, 1fr); }
-.miniGrid[data-count='3'] { grid-template-columns: repeat(3, 1fr); }
-.miniGrid[data-count='4'] { grid-template-columns: repeat(2, 1fr); }
-.miniGrid[data-count='5'] { grid-template-columns: repeat(3, 1fr); }
-.miniGrid[data-count='6'] { grid-template-columns: repeat(3, 1fr); }
-
-/* List layout for mini grid */
-.miniGrid[data-layout='list'] {
-  grid-template-columns: 1fr !important;
-  gap: 10px;
-}
-
-.miniGrid[data-layout='list'] .miniCard {
-  flex-direction: row;
-  align-items: center;
-  padding: 24px 28px;
-  gap: 18px;
-}
-
-/* Mini card — identical structure to .card */
-.miniCard {
-  background: #ffffff;
-  border: 1px solid #d0d7e2;
-  border-radius: 10px;
-  padding: 24px 28px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.miniIcon {
-  font-size: 2.2rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.miniText {
-  display: flex;
-  flex-direction: column;
-}
-
-.miniTitle {
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: #1a2332;
-  letter-spacing: 0.01em;
-}
-
-.miniDescription {
-  display: none;
+.inside:focus-visible {
+  outline: 2px solid #3d6aff;
+  outline-offset: 2px;
+  border-radius: 4px;
 }

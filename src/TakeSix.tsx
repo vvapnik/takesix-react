@@ -1,33 +1,34 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
   addBlock,
   addLink,
   canAddBlock,
+  moveBlock,
   removeBlock,
   updateBlock,
   type TakeSixDocument,
 } from '@takesix/core'
-import { CheckIcon, PencilIcon } from './icons.js'
 import { Viewer, type ViewerActions } from './Viewer.js'
 import styles from './TakeSix.module.css'
 
 export interface TakeSixProps {
   /** The diagram to show. Expected to be valid: run `parseDocument` from `@takesix/core` on untrusted input. */
   document: TakeSixDocument
-  /** Called with the edited document. Without it the diagram is read-only and the Edit button is hidden. */
+  /** Called with the edited document. Without it the diagram stays read-only. */
   onChange?: (document: TakeSixDocument) => void
-  /** Start in edit mode. */
-  defaultEditing?: boolean
+  /**
+   * Show the edit controls. The toggle lives in the host app (e.g. its toolbar),
+   * so the component itself is only the view. Ignored without `onChange`.
+   */
+  editing?: boolean
   className?: string
 }
 
 const NEW_BLOCK = { title: 'New block', description: 'Description' }
 
 /** Viewer and editor for a takesix document: one level on screen, click a block to open it. */
-export function TakeSix({ document: doc, onChange, defaultEditing = false, className }: TakeSixProps) {
-  const editable = onChange !== undefined
-  const [editingState, setEditing] = useState(defaultEditing)
-  const editing = editable && editingState
+export function TakeSix({ document: doc, onChange, editing: editingProp = false, className }: TakeSixProps) {
+  const editing = onChange !== undefined && editingProp
 
   const actions = useMemo<ViewerActions>(() => {
     const commit = (next: TakeSixDocument) => { if (next !== doc) onChange?.(next) }
@@ -49,6 +50,9 @@ export function TakeSix({ document: doc, onChange, defaultEditing = false, class
       setLayout(parentId, layout) {
         commit(parentId === null ? { ...doc, layout } : updateBlock(doc, parentId, { layout }))
       },
+      move(id, parentId, index) {
+        commit(moveBlock(doc, id, parentId, { index }))
+      },
       toggleLink(fromId, toId) {
         const links = doc.links ?? []
         const rest = links.filter(l => !(l.from === fromId && l.to === toId))
@@ -65,16 +69,6 @@ export function TakeSix({ document: doc, onChange, defaultEditing = false, class
 
   return (
     <div className={`${styles.takeSix} ${className ?? ''}`}>
-      {editable && (
-        <button
-          className={`${styles.modeToggle} ${editing ? styles.modeToggleEdit : ''}`}
-          onClick={() => setEditing(e => !e)}
-          aria-pressed={editing}
-        >
-          {editing ? <><CheckIcon />Done</> : <><PencilIcon />Edit</>}
-        </button>
-      )}
-
       <Viewer document={doc} editing={editing} actions={actions} />
     </div>
   )

@@ -1,12 +1,14 @@
 .viewer {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  /* between the breadcrumb and the slide; kept small to save height */
+  gap: 6px;
   height: 100%;
 }
 
 /* Breadcrumb */
 .breadcrumb {
+  cursor: zoom-out;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -76,13 +78,19 @@
   overflow: hidden;
 }
 
-/* Header — identical sizing to BlockCard .header */
+/* Header: the document on the top level, the opened block below it.
+   When nested, identical sizing to BlockCard .header */
 .slideHeader {
   padding: 20px 24px 16px;
   display: flex;
   align-items: flex-start;
   gap: 14px;
   flex-shrink: 0;
+}
+
+/* Top level: no card around it, so no inner padding */
+.slideHeaderTop {
+  padding: 0 0 20px;
 }
 
 .slideIcon {
@@ -164,7 +172,7 @@
   font-size: 0.85rem;
 }
 
-/* Nested: dashed border matching BlockCard .childrenSection */
+/* Nested: the opened block's area inside the enlarged card */
 .gridAreaNested {
   margin: 0 10px 10px;
   border: 1.5px dashed #c4cedc;
@@ -216,10 +224,21 @@
 
 /* List layout grid overrides */
 .grid[data-layout='list'] {
-  grid-template-columns: 1fr !important;
-  justify-content: stretch !important;
-  align-content: start;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Rows never shrink: their text must stay whole */
+.grid[data-layout='list'] > :not(.listSpacer) {
+  flex: none;
+}
+
+/* Elastic gap between rows: 40px when there is room, down to 12px when
+   there is not. Room for an arrow and its label. */
+.listSpacer {
+  flex: 0 1 40px;
+  min-height: 12px;
 }
 
 /* Add block */

@@ -6,6 +6,7 @@ import {
   moveBlock,
   removeBlock,
   updateBlock,
+  type Link,
   type TakeSixDocument,
 } from '@takesix/core'
 import { Viewer, type ViewerActions } from './Viewer.js'
@@ -52,6 +53,19 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
       },
       move(id, parentId, index) {
         commit(moveBlock(doc, id, parentId, { index }))
+      },
+      updateLink(link, changes) {
+        const next = { ...link } as Record<string, unknown>
+        for (const [key, value] of Object.entries(changes)) {
+          if (value === undefined) delete next[key]
+          else next[key] = value
+        }
+        commit({ ...doc, links: (doc.links ?? []).map(l => (l === link ? next as unknown as Link : l)) })
+      },
+      removeLink(link) {
+        const rest = (doc.links ?? []).filter(l => l !== link)
+        const { links: _, ...withoutLinks } = doc
+        commit(rest.length ? { ...doc, links: rest } : withoutLinks)
       },
       toggleLink(fromId, toId) {
         const links = doc.links ?? []

@@ -220,6 +220,83 @@ describe('TakeSix (editing)', () => {
     expect(crumbs()).toEqual([])
   })
 
+  it('links blocks on different levels', async () => {
+    const { user, latest } = renderEditable()
+    await user.click(screen.getByRole('button', { name: 'Connect from Database' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Linking from Database')
+
+    // open API while linking, then pick a block inside it
+    await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
+    expect(crumbs()).toEqual(['Shop', 'API'])
+    await user.click(screen.getByRole('button', { name: 'Connect to Auth' }))
+
+    expect(latest.doc.links?.map(l => [l.from, l.to])).toEqual([['web', 'api'], ['db', 'auth']])
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('does not offer a block\'s ancestors or descendants as link targets', async () => {
+    const { user } = renderEditable()
+    await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
+    await user.click(screen.getByRole('button', { name: 'Connect from Auth' }))
+    await user.click(screen.getByRole('button', { name: 'Shop' }))
+    await act(() => new Promise(r => setTimeout(r, 400)))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Linking from Auth')
+    expect(screen.getByRole('button', { name: 'Connect to Web app' })).toBeInTheDocument()
+    // API contains Auth: not a target
+    expect(screen.queryByRole('button', { name: 'Connect to API' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('edits a link: label, direction, reverse and delete', async () => {
+    // Arrows are routed from card rects; give the cards some so the arrow exists in jsdom
+    const rects: Record<string, DOMRect> = {
+      web: new DOMRect(0, 0, 100, 60),
+      api: new DOMRect(300, 0, 100, 60),
+      db: new DOMRect(600, 0, 100, 60),
+    }
+    const original = HTMLElement.prototype.getBoundingClientRect
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      const id = (this as HTMLElement).dataset.blockId
+      return (id && rects[id]) || new DOMRect(0, 0, 1000, 600)
+    }
+    try {
+      const { user, latest } = renderEditable()
+      const link = () => latest.doc.links![0]!
+
+      await user.click(await screen.findByRole('button', { name: 'Edit link Web app – API' }))
+      const dialog = screen.getByRole('dialog', { name: 'Link' })
+      expect(dialog).toHaveTextContent('Web app → API')
+
+      const label = within(dialog).getByRole('textbox', { name: 'Label' })
+      await user.type(label, 'REST{Enter}')
+      expect(link().label).toBe('REST')
+
+      await user.click(within(dialog).getByRole('button', { name: 'Both ways' }))
+      expect(link().direction).toBe('both')
+      // reverse only makes sense one way
+      expect(within(dialog).getByRole('button', { name: 'Reverse' })).toBeDisabled()
+
+      await user.click(within(dialog).getByRole('button', { name: 'One way' }))
+      expect(link()).not.toHaveProperty('direction')
+      await user.click(within(dialog).getByRole('button', { name: 'Reverse' }))
+      expect([link().from, link().to]).toEqual(['api', 'web'])
+
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete link' }))
+      expect(latest.doc.links).toBeUndefined()
+      expect(screen.queryByRole('dialog')).toBeNull()
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original
+    }
+  })
+
+  it('does not offer link editing outside edit mode', () => {
+    render(<TakeSix document={sampleDoc()} />)
+    expect(screen.queryByRole('button', { name: /Edit link/ })).toBeNull()
+  })
+
   it('stores the top-level layout in the document', async () => {
     const { user, latest } = renderEditable()
     await user.click(screen.getByRole('button', { name: 'List layout' }))

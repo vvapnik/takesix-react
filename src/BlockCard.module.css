@@ -102,6 +102,20 @@
   border-radius: 10px;
 }
 
+/* While linking: a block that cannot be the target (contains the source or is inside it) */
+.cardUnlinkable {
+  opacity: 0.45;
+}
+
+/* While linking, "N more inside" stays above the overlay: open a block to
+   link to something deeper. */
+.cardConnectable .inside,
+.cardConnected .inside {
+  position: relative;
+  z-index: 6;
+  cursor: zoom-in;
+}
+
 .connectOverlayConnected {
   cursor: pointer;
 }
@@ -109,6 +123,22 @@
 /* Edit mode: room for the drag handle on the left */
 .cardEditing {
   padding-left: 18px;
+}
+
+/* ...and for the connect and delete buttons in the top right corner */
+.cardEditing .header {
+  padding-right: 64px;
+}
+
+.addInside {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.addInside:hover {
+  color: #3d6aff;
 }
 
 /* Tall strip of dots along the left edge: grab it to drag the block */
@@ -212,33 +242,6 @@
 .cardList .inside {
   padding: 0 20px;
   align-self: center;
-}
-
-.cardList .addChildBtn {
-  margin: 8px;
-  border-left: 1.5px dashed #c4cedc;
-  border-radius: 0 6px 6px 0;
-  min-width: 48px;
-}
-
-.addChildBtn {
-  all: unset;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 10px 10px;
-  padding: 10px;
-  border: 1.5px dashed #c4cedc;
-  border-radius: 7px;
-  color: #b0bfda;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-
-.addChildBtn:hover {
-  border-color: #3d6aff;
-  color: #3d6aff;
-  background: #f0f4ff;
 }
 
 .editable {

@@ -75,10 +75,19 @@ view: the Edit toggle belongs to your app (a toolbar, a menu).
 
 ### Editing
 
-In edit mode you can rename blocks and edit descriptions in place, add and
-delete blocks, link blocks on the same screen (arrow button, then the target;
-clicking a linked target removes the link), and switch the layout. A level
-stops offering "add" at 6 blocks.
+In edit mode you can:
+
+- rename blocks and edit descriptions in place;
+- add and delete blocks; a level stops offering "add" at 6 blocks;
+- reorder blocks by dragging the dotted handle on their left;
+- link blocks: press the arrow button on the source, then click the target.
+  The target may be on any level: while linking, open blocks ("N more inside")
+  or go back up to find it. A block's own ancestors and descendants cannot be
+  targets. Clicking a linked target removes the link; Esc or Cancel stops;
+- edit links: click an arrow or its label to change the label and direction
+  (one way, both ways, none), reverse or delete it. A merged arrow lists every
+  link it stands for, with their real endpoints;
+- switch the layout of the current level.
 
 ## Development
 

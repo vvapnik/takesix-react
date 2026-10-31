@@ -6,11 +6,13 @@ import {
   visibleLinks,
   type Block,
   type Layout,
+  type Link,
   type TakeSixDocument,
   type VisibleLink,
 } from '@takesix/core'
 import { BlockCard, type CardRect, type DropPosition } from './BlockCard.js'
 import { HEAD_LENGTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
+import { LinkPopover, type LinkEdit } from './LinkPopover.js'
 import { CircleLayoutIcon, ListIcon, PlusIcon, TilesIcon } from './icons.js'
 import styles from './Viewer.module.css'
 
@@ -26,6 +28,9 @@ export interface ViewerActions {
   toggleLink: (fromId: string, toId: string) => void
   /** Moves a block to position `index` among the children of `parentId`. */
   move: (id: string, parentId: string | null, index: number) => void
+  /** Edits one link, found by identity (links in files may have no id). */
+  updateLink: (link: Link, changes: LinkEdit) => void
+  removeLink: (link: Link) => void
 }
 
 interface Props {
@@ -57,6 +62,11 @@ function arrowLabel(link: VisibleLink): string | undefined {
   return labels.length ? labels.join(', ') : undefined
 }
 
+/** Same for a→b and b→a, so reversing a link keeps its editor open. */
+function pairKey(link: VisibleLink): string {
+  return [link.from, link.to].sort().join('|')
+}
+
 function toRect(r: DOMRect): Rect {
   return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }
 }
@@ -73,6 +83,9 @@ export function Viewer({ document: doc, editing, actions }: Props) {
 
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
+  // Arrow whose links are being edited, by its pair of blocks (see pairKey)
+  const [openArrow, setOpenArrow] = useState<string | null>(null)
+  const closeArrow = useCallback(() => setOpenArrow(null), [])
   const [drop, setDrop] = useState<{ id: string; position: DropPosition } | null>(null)
   const [arrowPaths, setArrowPaths] = useState<ArrowPath[]>([])
   const [circleSize, setCircleSize] = useState({ w: 0, h: 0 })
@@ -153,10 +166,18 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     })
   }, [layoutKey])
 
-  // Cancel connecting when leaving edit mode
+  // Cancel connecting and close the link editor when leaving edit mode
   useEffect(() => {
-    if (!editing) setConnectingFrom(null)
+    if (!editing) {
+      setConnectingFrom(null)
+      setOpenArrow(null)
+    }
   }, [editing])
+
+  // Close the link editor when its arrow goes away (level changed, links deleted)
+  useEffect(() => {
+    if (openArrow && !links.some(l => pairKey(l) === openArrow)) setOpenArrow(null)
+  }, [links, openArrow])
 
   // ESC cancels connecting
   useEffect(() => {
@@ -257,6 +278,17 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     })
   })()
 
+  // While linking, the target may sit on any level, except the source's own
+  // ancestors and descendants: such a link would never be visible.
+  const canLinkTo = useCallback((id: string) => {
+    if (!connectingFrom || id === connectingFrom) return false
+    const source = index.get(connectingFrom)
+    const target = index.get(id)
+    if (!source || !target) return false
+    return !source.path.includes(id) && !target.path.includes(connectingFrom)
+  }, [connectingFrom, index])
+  const linkSource = connectingFrom ? index.get(connectingFrom)?.block : undefined
+
   // Direct links from the connecting source, to highlight already linked targets.
   const linkedFromSource = useMemo(() => {
     if (!connectingFrom) return new Set<string>()
@@ -344,6 +376,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
       onAddChild={addChildAndDrillIn}
       onDrillIn={drillIn}
       connectingFrom={connectingFrom}
+      canLinkTo={canLinkTo(block.id)}
       isConnected={linkedFromSource.has(block.id)}
       onStartConnect={id => setConnectingFrom(id === connectingFrom ? null : id)}
       onConnectTarget={connectTarget}
@@ -395,6 +428,15 @@ export function Viewer({ document: doc, editing, actions }: Props) {
           </span>
         ))}
       </nav>}
+
+      {linkSource && (
+        <div className={styles.linkBar} role="status">
+          <span>
+            Linking from <strong>{linkSource.title}</strong>: click a block on any level
+          </span>
+          <button className={styles.linkBarCancel} onClick={() => setConnectingFrom(null)}>Cancel</button>
+        </div>
+      )}
 
       {isNested && (
         <div
@@ -455,7 +497,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
                   </div>
                 )
               })}
-              {canAdd && addButton(styles.addBlockCenter)}
+              {canAdd && addButton(styles.addBlockCorner)}
             </div>
           ) : (
             <div
@@ -484,7 +526,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
           )}
 
           {arrows.length > 0 && (
-            <svg className={styles.arrowSvg} aria-hidden="true">
+            <svg className={`${styles.arrowSvg} ${editing ? styles.arrowSvgEditing : ''}`} aria-hidden={editing ? undefined : true}>
               <defs>
                 {/* Base of the head at the path end (refX 0): the head continues the line. */}
                 <marker id={markerId} markerWidth={HEAD_LENGTH} markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
@@ -493,6 +535,16 @@ export function Viewer({ document: doc, editing, actions }: Props) {
               </defs>
               {arrows.map(a => (
                 <g key={a.key} data-link={a.key}>
+                  {editing && (
+                    // Wide invisible stroke: easy to hit, opens the link editor
+                    <path
+                      d={a.d}
+                      className={styles.arrowHit}
+                      role="button"
+                      aria-label={`Edit link ${index.get(a.link.from)?.block.title ?? a.link.from} – ${index.get(a.link.to)?.block.title ?? a.link.to}`}
+                      onClick={e => { e.stopPropagation(); setOpenArrow(pairKey(a.link)) }}
+                    />
+                  )}
                   <path
                     d={a.d}
                     className={`${styles.arrow} ${a.link.direct ? '' : styles.arrowIndirect}`}
@@ -504,7 +556,8 @@ export function Viewer({ document: doc, editing, actions }: Props) {
                     <text
                       x={a.vertical ? a.mid.x + 8 : a.mid.x}
                       y={a.mid.y}
-                      className={styles.arrowLabel}
+                      className={`${styles.arrowLabel} ${openArrow === pairKey(a.link) ? styles.arrowLabelOpen : ''}`}
+                      onClick={editing ? e => { e.stopPropagation(); setOpenArrow(pairKey(a.link)) } : undefined}
                       textAnchor={a.vertical ? 'start' : 'middle'}
                       dominantBaseline="middle"
                     >
@@ -515,6 +568,22 @@ export function Viewer({ document: doc, editing, actions }: Props) {
               ))}
             </svg>
           )}
+
+          {(() => {
+            const open = editing && arrows.find(a => pairKey(a.link) === openArrow)
+            if (!open) return null
+            return (
+              <LinkPopover
+                links={open.link.links}
+                x={open.mid.x}
+                y={open.mid.y}
+                titleOf={id => index.get(id)?.block.title ?? id}
+                onUpdate={actions.updateLink}
+                onRemove={actions.removeLink}
+                onClose={closeArrow}
+              />
+            )
+          })()}
         </div>
       </div>
     </div>

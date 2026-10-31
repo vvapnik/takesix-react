@@ -20,6 +20,8 @@ interface Props {
   onAddChild: (block: Block, cardRect: CardRect) => void
   onDrillIn: (block: Block, cardRect: CardRect) => void
   connectingFrom: string | null
+  /** While linking: this block may be the target (not the source, its ancestor or descendant). */
+  canLinkTo: boolean
   isConnected: boolean
   onStartConnect: (id: string) => void
   onConnectTarget: (id: string) => void
@@ -34,7 +36,7 @@ interface Props {
 
 export function BlockCard({
   block, layout, editing, onRename, onDescribe, onDelete, onAddChild, onDrillIn,
-  connectingFrom, isConnected, onStartConnect, onConnectTarget, onRegisterEl,
+  connectingFrom, canLinkTo, isConnected, onStartConnect, onConnectTarget, onRegisterEl,
   isDragged, dropPosition, onDragStartBlock, onDragOverBlock, onDragEndBlock,
 }: Props) {
   // Direct children only: the counter tells what the next screen holds.
@@ -56,7 +58,8 @@ export function BlockCard({
   const axis = layout === 'list' ? 'y' : 'x'
 
   const isConnectingSource = connectingFrom === block.id
-  const isConnectable = connectingFrom !== null && connectingFrom !== block.id
+  const isConnectable = connectingFrom !== null && connectingFrom !== block.id && canLinkTo
+  const isUnlinkable = connectingFrom !== null && connectingFrom !== block.id && !canLinkTo
 
   const onRegisterElRef = useRef(onRegisterEl)
   onRegisterElRef.current = onRegisterEl
@@ -89,6 +92,7 @@ export function BlockCard({
   if (isConnectingSource) cardClass += ` ${styles.cardConnectingSource}`
   else if (isConnectable && isConnected) cardClass += ` ${styles.cardConnected}`
   else if (isConnectable) cardClass += ` ${styles.cardConnectable}`
+  else if (isUnlinkable) cardClass += ` ${styles.cardUnlinkable}`
 
   return (
     <div
@@ -193,8 +197,9 @@ export function BlockCard({
       )}
 
       {!hasChildren && editing && (
+        // Same place and look as "N more inside": a quiet line, not a box
         <button
-          className={styles.addChildBtn}
+          className={`${styles.inside} ${styles.addInside}`}
           onClick={e => {
             e.stopPropagation()
             if (!cardEl.current) return
@@ -202,7 +207,7 @@ export function BlockCard({
           }}
           aria-label={`Add child to ${block.title}`}
         >
-          <PlusIcon size={16} />
+          <PlusIcon size={11} /> add inside
         </button>
       )}
     </div>

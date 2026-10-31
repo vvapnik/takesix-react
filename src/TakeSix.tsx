@@ -54,6 +54,9 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
       move(id, parentId, index) {
         commit(moveBlock(doc, id, parentId, { index }))
       },
+      setDetails(id, details) {
+        commit(updateBlock(doc, id, { details: details.trim() ? details : undefined }))
+      },
       updateLink(link, changes) {
         const next = { ...link } as Record<string, unknown>
         for (const [key, value] of Object.entries(changes)) {

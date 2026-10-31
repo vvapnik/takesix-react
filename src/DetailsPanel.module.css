@@ -1,0 +1,126 @@
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  width: min(380px, 90%);
+  box-sizing: border-box;
+  padding: 20px 22px;
+  overflow-y: auto;
+  background: #ffffff;
+  border-left: 1px solid #d0d7e2;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.08);
+  font-size: 0.85rem;
+  color: #1a2332;
+  cursor: default;
+  animation: slideIn 0.18s ease-out;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(24px); opacity: 0; }
+}
+
+.close {
+  all: unset;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #8fa3b8;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: #f0f2f5;
+  color: #1a2332;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-right: 28px;
+  margin-bottom: 16px;
+}
+
+.icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.description {
+  margin: 0;
+  color: #7a8a9e;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.editor {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 160px;
+  padding: 8px 10px;
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  font: 0.8rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: inherit;
+  resize: vertical;
+  outline: none;
+}
+
+.editor:focus {
+  border-color: #3d6aff;
+}
+
+.editor + .body {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed #d0d7e2;
+}
+
+.body {
+  line-height: 1.55;
+}
+
+.body > :first-child { margin-top: 0; }
+.body > :last-child { margin-bottom: 0; }
+.body p, .body ul, .body ol, .body pre { margin: 0 0 10px; }
+.body ul, .body ol { padding-left: 20px; }
+.body h3, .body h4, .body h5 { margin: 14px 0 6px; font-size: 0.9rem; }
+.body a { color: #3d6aff; }
+
+.body code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #f0f2f5;
+  font: 0.78rem ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.body pre {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f0f2f5;
+  overflow-x: auto;
+}
+
+.body pre code {
+  padding: 0;
+  background: none;
+}
+
+.empty {
+  margin: 0;
+  color: #8fa3b8;
+}

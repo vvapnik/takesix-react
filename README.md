@@ -70,6 +70,11 @@ view: the Edit toggle belongs to your app (a toolbar, a menu).
   one arrow labelled with their labels, or with the count when there are more
   than two. An arrow that stands for nested links is dashed.
 - **Directions**: `forward` has one arrowhead, `both` two, `none` none.
+- **Details**: a block with `details` gets a details button (on its card, and
+  in the header once opened) that opens a side panel. `details` is Markdown,
+  a safe subset rendered without HTML: `#`–`###` headings, paragraphs, `-`/`1.`
+  lists, fenced code, `**bold**`, `*italic*`, `` `code` ``, and links with
+  `http(s)`/`mailto` URLs (other schemes are shown as plain text).
 - **Layouts**: `tiles`, `list` and `circle`, per level (`layout` on the parent
   block, or on the document for the top level).
 
@@ -87,6 +92,8 @@ In edit mode you can:
 - edit links: click an arrow or its label to change the label and direction
   (one way, both ways, none), reverse or delete it. A merged arrow lists every
   link it stands for, with their real endpoints;
+- write details: the details button opens the panel with a Markdown editor
+  and a live preview;
 - switch the layout of the current level.
 
 ## Development

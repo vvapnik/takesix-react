@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Block, Layout } from '@takesix/core'
-import { ArrowRightIcon, CrossIcon, PlusIcon } from './icons.js'
+import { ArrowRightIcon, CrossIcon, DetailsIcon, PlusIcon } from './icons.js'
 import styles from './BlockCard.module.css'
 
 export interface CardRect {
@@ -32,13 +32,15 @@ interface Props {
   onDragStartBlock: (id: string) => void
   onDragOverBlock: (id: string, position: DropPosition) => void
   onDragEndBlock: () => void
+  onShowDetails: (id: string) => void
 }
 
 export function BlockCard({
   block, layout, editing, onRename, onDescribe, onDelete, onAddChild, onDrillIn,
   connectingFrom, canLinkTo, isConnected, onStartConnect, onConnectTarget, onRegisterEl,
-  isDragged, dropPosition, onDragStartBlock, onDragOverBlock, onDragEndBlock,
+  isDragged, dropPosition, onDragStartBlock, onDragOverBlock, onDragEndBlock, onShowDetails,
 }: Props) {
+  const hasDetails = !!block.details?.trim()
   // Direct children only: the counter tells what the next screen holds.
   const childCount = block.children?.length ?? 0
   const hasChildren = childCount > 0
@@ -88,6 +90,7 @@ export function BlockCard({
   if (hasChildren && !isConnectable) cardClass += ` ${styles.cardZoomable}`
   if (layout === 'list') cardClass += ` ${styles.cardList}`
   if (editing) cardClass += ` ${styles.cardEditing}`
+  else if (hasDetails) cardClass += ` ${styles.cardWithDetails}`
   if (isDragged) cardClass += ` ${styles.cardDragged}`
   if (isConnectingSource) cardClass += ` ${styles.cardConnectingSource}`
   else if (isConnectable && isConnected) cardClass += ` ${styles.cardConnected}`
@@ -135,6 +138,18 @@ export function BlockCard({
           onClick={e => { e.stopPropagation(); onConnectTarget(block.id) }}
           aria-label={isConnected ? `Disconnect from ${block.title}` : `Connect to ${block.title}`}
         />
+      )}
+
+      {(editing || hasDetails) && (
+        // Viewing: only when there are details. Editing: always, to add them.
+        <button
+          className={`${styles.detailsBtn} ${hasDetails ? styles.detailsBtnFilled : ''}`}
+          onClick={e => { e.stopPropagation(); onShowDetails(block.id) }}
+          aria-label={`Details of ${block.title}`}
+          title={hasDetails ? 'Details' : 'Add details'}
+        >
+          <DetailsIcon />
+        </button>
       )}
 
       {editing && (

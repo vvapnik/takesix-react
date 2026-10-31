@@ -13,7 +13,8 @@ import {
 import { BlockCard, type CardRect, type DropPosition } from './BlockCard.js'
 import { HEAD_LENGTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
-import { CircleLayoutIcon, ListIcon, PlusIcon, TilesIcon } from './icons.js'
+import { DetailsPanel } from './DetailsPanel.js'
+import { CircleLayoutIcon, DetailsIcon, ListIcon, PlusIcon, TilesIcon } from './icons.js'
 import styles from './Viewer.module.css'
 
 /** Edits the viewer asks for. All of them are optional: without one, the matching control is hidden. */
@@ -31,6 +32,8 @@ export interface ViewerActions {
   /** Edits one link, found by identity (links in files may have no id). */
   updateLink: (link: Link, changes: LinkEdit) => void
   removeLink: (link: Link) => void
+  /** Saves a block's Markdown details; an empty string removes them. */
+  setDetails: (id: string, details: string) => void
 }
 
 interface Props {
@@ -86,6 +89,9 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   // Arrow whose links are being edited, by its pair of blocks (see pairKey)
   const [openArrow, setOpenArrow] = useState<string | null>(null)
   const closeArrow = useCallback(() => setOpenArrow(null), [])
+  // Block whose details panel is open
+  const [detailsId, setDetailsId] = useState<string | null>(null)
+  const closeDetails = useCallback(() => setDetailsId(null), [])
   const [drop, setDrop] = useState<{ id: string; position: DropPosition } | null>(null)
   const [arrowPaths, setArrowPaths] = useState<ArrowPath[]>([])
   const [circleSize, setCircleSize] = useState({ w: 0, h: 0 })
@@ -96,6 +102,8 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   const [settleTick, setSettleTick] = useState(0)
 
   const index = useMemo(() => buildIndex(doc), [doc])
+  // Gone when the block is deleted: the panel closes by itself
+  const detailsBlock = detailsId ? index.get(detailsId)?.block : undefined
 
   // Drop path entries whose blocks no longer exist (e.g. after deletion).
   const livePath = useMemo(() => {
@@ -389,6 +397,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
         if (drop?.id !== id || drop.position !== position) setDrop({ id, position })
       }}
       onDragEndBlock={endDrag}
+      onShowDetails={setDetailsId}
     />
   )
 
@@ -461,6 +470,15 @@ export function Viewer({ document: doc, editing, actions }: Props) {
                 <h1 className={styles.slideTitle}>{head.title}</h1>
                 {head.description && <p className={styles.slideDescription}>{head.description}</p>}
               </div>
+              {parent && (editing || parent.details?.trim()) && (
+                <button
+                  className={styles.headerDetailsBtn}
+                  onClick={() => setDetailsId(parent.id)}
+                  aria-label={`Details of ${parent.title}`}
+                >
+                  <DetailsIcon /> {parent.details?.trim() ? 'Details' : 'Add details'}
+                </button>
+              )}
             </div>
           )
         })()}
@@ -586,6 +604,16 @@ export function Viewer({ document: doc, editing, actions }: Props) {
           })()}
         </div>
       </div>
+
+      {/* Outside the slide: full height on the right, on any level */}
+      {detailsBlock && (
+        <DetailsPanel
+          block={detailsBlock}
+          editing={editing}
+          onChange={details => actions.setDetails(detailsBlock.id, details)}
+          onClose={closeDetails}
+        />
+      )}
     </div>
   )
 }

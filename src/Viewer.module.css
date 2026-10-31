@@ -88,6 +88,26 @@
   flex-shrink: 0;
 }
 
+.headerDetailsBtn {
+  all: unset;
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid #d0d7e2;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: #5a6a7e;
+  cursor: pointer;
+}
+
+.headerDetailsBtn:hover {
+  border-color: #3d6aff;
+  color: #3d6aff;
+}
+
 /* Top level: no card around it, so no inner padding */
 .slideHeaderTop {
   padding: 0 0 20px;

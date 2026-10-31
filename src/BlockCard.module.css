@@ -35,6 +35,39 @@
   color: #dc2626;
 }
 
+.detailsBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #c0c8d4;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 2;
+  transition: background 0.15s, color 0.15s;
+}
+
+/* Edit mode: left of connect and delete */
+.cardEditing .detailsBtn {
+  right: 60px;
+}
+
+.detailsBtnFilled {
+  color: #8fa3b8;
+}
+
+.detailsBtn:hover {
+  background: #e8eeff;
+  color: #3d6aff;
+}
+
 .connectBtn {
   position: absolute;
   top: 8px;
@@ -125,9 +158,13 @@
   padding-left: 18px;
 }
 
-/* ...and for the connect and delete buttons in the top right corner */
+/* ...and for the details, connect and delete buttons in the top right corner */
 .cardEditing .header {
-  padding-right: 64px;
+  padding-right: 90px;
+}
+
+.cardWithDetails .header {
+  padding-right: 36px;
 }
 
 .addInside {

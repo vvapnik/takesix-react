@@ -58,3 +58,13 @@ export function CircleLayoutIcon() {
     </svg>
   )
 }
+
+export function DetailsIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+      <line x1="5" y1="6" x2="19" y2="6" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <line x1="5" y1="18" x2="13" y2="18" />
+    </svg>
+  )
+}

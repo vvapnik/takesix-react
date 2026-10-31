@@ -20,6 +20,14 @@ export const sample: TakeSixDocument = {
       icon: '⬡',
       title: 'API',
       description: 'Public HTTP API',
+      details: [
+        'REST over HTTPS, versioned by path (`/v1/…`).',
+        '',
+        '## Conventions',
+        '- JSON bodies, **snake_case** fields',
+        '- Errors follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)',
+        '- Auth: bearer tokens from *Auth*',
+      ].join('\n'),
       children: [
         { id: 'api-auth', icon: '🔑', title: 'Auth', description: 'Sessions and tokens' },
         {
@@ -37,7 +45,13 @@ export const sample: TakeSixDocument = {
         { id: 'api-products', icon: '◫', title: 'Products', description: 'Catalog and prices' },
       ],
     },
-    { id: 'db', icon: '◈', title: 'Database', description: 'PostgreSQL' },
+    {
+      id: 'db',
+      icon: '◈',
+      title: 'Database',
+      description: 'PostgreSQL',
+      details: 'Single primary with a read replica.\n\n```\npostgres 17, 4 vCPU, 16 GB\n```',
+    },
     { id: 'payments', icon: '💳', title: 'Payments', description: 'External provider' },
   ],
   links: [

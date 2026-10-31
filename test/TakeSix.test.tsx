@@ -67,6 +67,33 @@ describe('TakeSix (read-only)', () => {
     expect(screen.queryByText('Auth')).toBeNull()
   })
 
+  it('shows details in a side panel, only for blocks that have them', async () => {
+    const user = userEvent.setup()
+    const doc = sampleDoc()
+    doc.blocks[0]!.details = 'Built with **React**'
+    render(<TakeSix document={doc} />)
+
+    expect(screen.queryByRole('button', { name: 'Details of Database' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Details of Web app' }))
+    const panel = screen.getByRole('complementary', { name: 'Details: Web app' })
+    expect(within(panel).getByText('React').tagName).toBe('STRONG')
+    // the details button does not open the block
+    expect(crumbs()).toEqual([])
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('complementary')).toBeNull()
+  })
+
+  it('offers the opened block\'s details in its header', async () => {
+    const user = userEvent.setup()
+    const doc = sampleDoc()
+    doc.blocks[1]!.details = 'All public endpoints'
+    render(<TakeSix document={doc} />)
+    await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
+    await user.click(screen.getByRole('button', { name: 'Details of API' }))
+    expect(screen.getByRole('complementary')).toHaveTextContent('All public endpoints')
+  })
+
   it('ignores editing without onChange', () => {
     render(<TakeSix document={sampleDoc()} editing />)
     expect(screen.queryByRole('button', { name: 'Add block' })).toBeNull()
@@ -295,6 +322,20 @@ describe('TakeSix (editing)', () => {
   it('does not offer link editing outside edit mode', () => {
     render(<TakeSix document={sampleDoc()} />)
     expect(screen.queryByRole('button', { name: /Edit link/ })).toBeNull()
+  })
+
+  it('adds, edits and removes details in edit mode', async () => {
+    const { user, latest } = renderEditable()
+    await user.click(screen.getByRole('button', { name: 'Details of Database' }))
+    const editor = screen.getByRole('textbox', { name: 'Details (Markdown)' })
+
+    await user.type(editor, 'Primary store')
+    await user.tab()
+    expect(findBlock(latest.doc, 'db')?.details).toBe('Primary store')
+
+    await user.clear(screen.getByRole('textbox', { name: 'Details (Markdown)' }))
+    await user.tab()
+    expect(findBlock(latest.doc, 'db')).not.toHaveProperty('details')
   })
 
   it('stores the top-level layout in the document', async () => {

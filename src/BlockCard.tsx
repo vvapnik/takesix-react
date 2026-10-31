@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Block, Layout } from '@takesix/core'
+import { DEFAULT_SIZE, SIZES, type Block, type Size } from '@takesix/core'
 import { ArrowRightIcon, CrossIcon, DetailsIcon, PlusIcon } from './icons.js'
 import styles from './BlockCard.module.css'
 
@@ -10,9 +10,18 @@ export interface CardRect {
 /** Where a dragged block would land relative to this card. */
 export type DropPosition = 'before' | 'after'
 
+/** Grid columns (of 6) each size spans. */
+export const SIZE_SPAN: Record<Size, number> = { S: 2, M: 3, L: 4, F: 6 }
+const SIZE_LABEL: Record<Size, string> = { S: '⅓', M: '½', L: '⅔', F: '1' }
+const SIZE_NAME: Record<Size, string> = { S: 'a third', M: 'half', L: 'two thirds', F: 'full width' }
+
+/** The size whose span is closest to `columns`. */
+function sizeForColumns(columns: number): Size {
+  return SIZES.reduce((best, s) => (Math.abs(SIZE_SPAN[s] - columns) < Math.abs(SIZE_SPAN[best] - columns) ? s : best))
+}
+
 interface Props {
   block: Block
-  layout: Layout
   editing: boolean
   onRename: (id: string, title: string) => void
   onDescribe: (id: string, description: string) => void
@@ -37,14 +46,18 @@ interface Props {
   selectable: boolean
   selected: boolean
   onToggleSelect: (id: string) => void
+  onResize: (id: string, size: Size) => void
 }
 
 export function BlockCard({
-  block, layout, editing, onRename, onDescribe, onDelete, onAddChild, onDrillIn,
+  block, editing, onRename, onDescribe, onDelete, onAddChild, onDrillIn,
   connectingFrom, canLinkTo, isConnected, onStartConnect, onConnectTarget, onRegisterEl,
   isDragged, dropPosition, onDragStartBlock, onDragOverBlock, onDragEndBlock, onShowDetails,
-  selectable, selected, onToggleSelect,
+  selectable, selected, onToggleSelect, onResize,
 }: Props) {
+  // While the right edge is being dragged: the size under the pointer
+  const [previewSize, setPreviewSize] = useState<Size | null>(null)
+  const size = previewSize ?? block.size ?? DEFAULT_SIZE
   const hasDetails = !!block.details?.trim()
   // Direct children only: the counter tells what the next screen holds.
   const childCount = block.children?.length ?? 0
@@ -61,8 +74,8 @@ export function BlockCard({
     window.addEventListener('pointerup', disarm)
     return () => window.removeEventListener('pointerup', disarm)
   }, [armed])
-  // Rows are ordered top to bottom, tiles left to right.
-  const axis = layout === 'list' ? 'y' : 'x'
+  // Full-width rows are ordered top to bottom, everything else left to right.
+  const axis = size === 'F' ? 'y' : 'x'
 
   const isConnectingSource = connectingFrom === block.id
   const isConnectable = connectingFrom !== null && connectingFrom !== block.id && canLinkTo
@@ -85,7 +98,7 @@ export function BlockCard({
   // can be selected or edited) and on the card's own buttons.
   function handleCardClick(e: React.MouseEvent) {
     if (!hasChildren || !cardEl.current) return
-    if ((e.target as HTMLElement).closest('[data-text], [data-drag-handle]')) return
+    if ((e.target as HTMLElement).closest('[data-text], [data-drag-handle], [data-resize-handle]')) return
     const selection = window.getSelection()
     if (selection && !selection.isCollapsed && cardEl.current.contains(selection.anchorNode)) return
     onDrillIn(block, getCardRect())
@@ -94,7 +107,8 @@ export function BlockCard({
   let cardClass = styles.card
   if (hasChildren && !isConnectable && !selectable) cardClass += ` ${styles.cardZoomable}`
   if (selected) cardClass += ` ${styles.cardSelected}`
-  if (layout === 'list') cardClass += ` ${styles.cardList}`
+  if (size === 'F') cardClass += ` ${styles.cardWide}`
+  if (previewSize) cardClass += ` ${styles.cardResizing}`
   if (editing) cardClass += ` ${styles.cardEditing}`
   else if (hasDetails) cardClass += ` ${styles.cardWithDetails}`
   if (isDragged) cardClass += ` ${styles.cardDragged}`
@@ -108,6 +122,7 @@ export function BlockCard({
       className={cardClass}
       ref={cardEl}
       data-block-id={block.id}
+      data-size={size}
       data-drop={dropPosition ?? undefined}
       data-axis={axis}
       onClick={handleCardClick}
@@ -126,6 +141,37 @@ export function BlockCard({
       }}
       onDragEnd={() => { setArmed(false); onDragEndBlock() }}
     >
+      {editing && (
+        // Right edge: drag to resize, snapping to the four sizes
+        <div
+          className={styles.resizeHandle}
+          data-resize-handle
+          title="Drag to resize"
+          aria-hidden="true"
+          onPointerDown={e => {
+            e.preventDefault()
+            e.stopPropagation()
+            e.currentTarget.setPointerCapture?.(e.pointerId)
+            setPreviewSize(block.size ?? DEFAULT_SIZE)
+          }}
+          onPointerMove={e => {
+            if (!previewSize || !cardEl.current) return
+            const grid = cardEl.current.parentElement
+            if (!grid) return
+            const gap = parseFloat(getComputedStyle(grid).columnGap) || 0
+            const column = (grid.getBoundingClientRect().width - 5 * gap) / 6
+            const columns = (e.clientX - cardEl.current.getBoundingClientRect().left + gap) / (column + gap)
+            const next = sizeForColumns(columns)
+            if (next !== previewSize) setPreviewSize(next)
+          }}
+          onPointerUp={() => {
+            if (previewSize && previewSize !== (block.size ?? DEFAULT_SIZE)) onResize(block.id, previewSize)
+            setPreviewSize(null)
+          }}
+          onPointerCancel={() => setPreviewSize(null)}
+        />
+      )}
+
       {editing && (
         <div
           className={styles.dragHandle}
@@ -166,6 +212,20 @@ export function BlockCard({
           title={hasDetails ? 'Details' : 'Add details'}
         >
           <DetailsIcon />
+        </button>
+      )}
+
+      {editing && (
+        <button
+          className={styles.sizeBtn}
+          onClick={e => {
+            e.stopPropagation()
+            onResize(block.id, SIZES[(SIZES.indexOf(size) + 1) % SIZES.length]!)
+          }}
+          aria-label={`Size of ${block.title}: ${SIZE_NAME[size]}`}
+          title="Size: click to change, or drag the right edge"
+        >
+          {SIZE_LABEL[size]}
         </button>
       )}
 

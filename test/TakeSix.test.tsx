@@ -385,11 +385,46 @@ describe('TakeSix (editing)', () => {
     expect(screen.queryByRole('button', { name: 'Select API' })).toBeNull()
   })
 
-  it('stores the top-level layout in the document', async () => {
+  it('cycles a block\'s size with its size button', async () => {
     const { user, latest } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'List layout' }))
-    expect(latest.doc.layout).toBe('list')
-    expect(screen.getByRole('button', { name: 'List layout' })).toHaveAttribute('aria-pressed', 'true')
+    const card = () => document.querySelector('[data-block-id="db"]') as HTMLElement
+    expect(card()).toHaveAttribute('data-size', 'M')
+
+    await user.click(screen.getByRole('button', { name: 'Size of Database: half' }))
+    expect(findBlock(latest.doc, 'db')?.size).toBe('L')
+    await user.click(screen.getByRole('button', { name: 'Size of Database: two thirds' }))
+    expect(findBlock(latest.doc, 'db')?.size).toBe('F')
+    expect(card()).toHaveAttribute('data-size', 'F')
+    await user.click(screen.getByRole('button', { name: 'Size of Database: full width' }))
+    expect(findBlock(latest.doc, 'db')?.size).toBe('S')
+    // back to the default: the field is dropped from the file
+    await user.click(screen.getByRole('button', { name: 'Size of Database: a third' }))
+    expect(findBlock(latest.doc, 'db')).not.toHaveProperty('size')
+  })
+
+  it('resizes a block by dragging its right edge, snapping to the sizes', () => {
+    const { latest } = renderEditable()
+    const card = document.querySelector('[data-block-id="db"]') as HTMLElement
+    const grid = card.parentElement!
+    // a 600px grid without gaps in jsdom: 100px per column, the card starts at 0
+    grid.getBoundingClientRect = () => new DOMRect(0, 0, 600, 400)
+    card.getBoundingClientRect = () => new DOMRect(0, 0, 300, 80)
+    const handle = card.querySelector('[data-resize-handle]') as HTMLElement
+    const move = (x: number) => {
+      const e = createEvent.pointerMove(handle)
+      Object.defineProperty(e, 'clientX', { value: x })
+      fireEvent(handle, e)
+    }
+
+    fireEvent.pointerDown(handle)
+    move(380) // 3.8 columns: closest size is L (4)
+    expect(card).toHaveAttribute('data-size', 'L')
+    move(590) // nearly the full width
+    expect(card).toHaveAttribute('data-size', 'F')
+    // nothing is saved until the pointer is released
+    expect(findBlock(latest.doc, 'db')).not.toHaveProperty('size')
+    fireEvent.pointerUp(handle)
+    expect(findBlock(latest.doc, 'db')?.size).toBe('F')
   })
 
   it('adds a first child and opens the block', async () => {

@@ -35,6 +35,50 @@
   color: var(--ts-danger);
 }
 
+.sizeBtn {
+  position: absolute;
+  top: 8px;
+  right: 86px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 11px;
+  border: none;
+  background: transparent;
+  color: var(--ts-icon);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 2;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sizeBtn:hover {
+  background: var(--ts-accent-soft);
+  color: var(--ts-accent);
+}
+
+/* Right edge in edit mode: drag to resize */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  z-index: 3;
+}
+
+.resizeHandle:hover,
+.cardResizing .resizeHandle {
+  background: linear-gradient(to right, transparent 3px, var(--ts-accent) 3px, var(--ts-accent) 5px, transparent 5px);
+}
+
+.cardResizing {
+  border-color: var(--ts-accent);
+}
+
 .detailsBtn {
   position: absolute;
   top: 8px;
@@ -189,9 +233,9 @@
   padding-left: 18px;
 }
 
-/* ...and for the details, connect and delete buttons in the top right corner */
+/* ...and for the size, details, connect and delete buttons in the top right corner */
 .cardEditing .header {
-  padding-right: 90px;
+  padding-right: 116px;
 }
 
 .cardWithDetails .header {
@@ -295,19 +339,25 @@
   line-height: 1.4;
 }
 
-/* List layout variant */
-.cardList {
+/* Width on the level's 6-column grid */
+.card[data-size='S'] { grid-column: span 2; }
+.card[data-size='M'] { grid-column: span 3; }
+.card[data-size='L'] { grid-column: span 4; }
+.card[data-size='F'] { grid-column: span 6; }
+
+/* Full width: a row, like a list item — text left, "N more inside" right */
+.cardWide {
   flex-direction: row;
   align-items: stretch;
 }
 
-.cardList .header {
+.cardWide .header {
   flex: 1;
   padding: 14px 20px;
   border-bottom: none;
 }
 
-.cardList .inside {
+.cardWide .inside {
   padding: 0 20px;
   align-self: center;
 }

@@ -1,11 +1,11 @@
-import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   MAX_BLOCKS_PER_LEVEL,
   buildIndex,
   getLevel,
   visibleLinks,
   type Block,
-  type Layout,
+  type Size,
   type Link,
   type TakeSixDocument,
   type VisibleLink,
@@ -14,7 +14,7 @@ import { BlockCard, type CardRect, type DropPosition } from './BlockCard.js'
 import { HEAD_LENGTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
 import { DetailsPanel } from './DetailsPanel.js'
-import { CircleLayoutIcon, DetailsIcon, ListIcon, PlusIcon, TilesIcon } from './icons.js'
+import { DetailsIcon, PlusIcon } from './icons.js'
 import styles from './Viewer.module.css'
 
 /** Edits the viewer asks for. All of them are optional: without one, the matching control is hidden. */
@@ -24,7 +24,8 @@ export interface ViewerActions {
   remove: (id: string) => void
   /** Adds an empty block under `parentId` (`null` = top level). */
   add: (parentId: string | null) => void
-  setLayout: (parentId: string | null, layout: Layout) => void
+  /** Sets a block's width on its level. */
+  setSize: (id: string, size: Size) => void
   /** Links `fromId` → `toId`, or removes that link when it exists. */
   toggleLink: (fromId: string, toId: string) => void
   /** Moves a block to position `index` among the children of `parentId`. */
@@ -55,12 +56,6 @@ interface Arrow extends ArrowPath {
   label?: string
 }
 
-const LAYOUTS: Array<{ layout: Layout; label: string; Icon: () => ReactElement }> = [
-  { layout: 'tiles', label: 'Tiles', Icon: TilesIcon },
-  { layout: 'list', label: 'List', Icon: ListIcon },
-  { layout: 'circle', label: 'Circle', Icon: CircleLayoutIcon },
-]
-
 function arrowLabel(link: VisibleLink): string | undefined {
   const labels = [...new Set(link.links.map(l => l.label).filter((l): l is string => !!l))]
   if (link.links.length > 2) return `${link.links.length} links`
@@ -83,7 +78,6 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   const isAnimating = useRef(false)
   const cardElsMap = useRef(new Map<string, HTMLDivElement>())
   const gridAreaRef = useRef<HTMLDivElement>(null)
-  const circleContainerRef = useRef<HTMLDivElement>(null)
   const markerId = useId()
 
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
@@ -98,7 +92,6 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   const closeDetails = useCallback(() => setDetailsId(null), [])
   const [drop, setDrop] = useState<{ id: string; position: DropPosition } | null>(null)
   const [arrowPaths, setArrowPaths] = useState<ArrowPath[]>([])
-  const [circleSize, setCircleSize] = useState({ w: 0, h: 0 })
   const [path, setPath] = useState<PathEntry[]>([])
   const [layoutKey, setLayoutKey] = useState(0)
   const [sizeTick, setSizeTick] = useState(0)
@@ -126,7 +119,6 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   )
   const links = useMemo(() => visibleLinks(doc, parentId, index), [doc, parentId, index])
   const isNested = parentId !== null
-  const currentLayout: Layout = (parent ? parent.layout : doc.layout) ?? 'tiles'
   const canAdd = editing && blocks.length < MAX_BLOCKS_PER_LEVEL
 
   // FLIP: runs synchronously after DOM update, before paint
@@ -241,7 +233,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     }
 
     compute()
-  }, [blocks, links, layoutKey, editing, circleSize, sizeTick, settleTick])
+  }, [blocks, links, layoutKey, editing, sizeTick, settleTick])
 
   // Re-route arrows when the viewer or any card changes size
   const resizeObserver = useRef<ResizeObserver | null>(null)
@@ -254,19 +246,6 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     for (const card of cardElsMap.current.values()) ro.observe(card)
     return () => { ro.disconnect(); resizeObserver.current = null }
   }, [])
-
-  useEffect(() => {
-    if (currentLayout !== 'circle') return
-    const el = circleContainerRef.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(([entry]) => {
-      if (!entry) return
-      const { width, height } = entry.contentRect
-      setCircleSize({ w: width, h: height })
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [currentLayout])
 
   const registerCard = useCallback((id: string, el: HTMLDivElement | null) => {
     const old = cardElsMap.current.get(id)
@@ -286,17 +265,6 @@ export function Viewer({ document: doc, editing, actions }: Props) {
       return link ? [{ ...p, link, label: arrowLabel(link) }] : []
     })
   }, [arrowPaths, links])
-
-  const circlePositions: Array<{ x: number; y: number }> = (() => {
-    if (currentLayout !== 'circle' || circleSize.w === 0) return []
-    const { w, h } = circleSize
-    const n = blocks.length
-    const r = Math.min(w, h) * 0.38
-    return Array.from({ length: n }, (_, i) => {
-      const angle = (i / n) * 2 * Math.PI - Math.PI / 2
-      return { x: w / 2 + r * Math.cos(angle), y: h / 2 + r * Math.sin(angle) }
-    })
-  })()
 
   // While linking, the target may sit on any level, except the source's own
   // ancestors and descendants: such a link would never be visible.
@@ -384,11 +352,10 @@ export function Viewer({ document: doc, editing, actions }: Props) {
 
   const crumbs = [{ label: doc.title }, ...livePath.map(p => ({ label: index.get(p.id)?.block.title ?? '' }))]
 
-  const renderCard = (block: Block, layout: Layout) => (
+  const renderCard = (block: Block) => (
     <BlockCard
       key={block.id}
       block={block}
-      layout={layout}
       editing={editing}
       onRename={actions.rename}
       onDescribe={actions.describe}
@@ -413,12 +380,13 @@ export function Viewer({ document: doc, editing, actions }: Props) {
       selectable={grouping !== null}
       selected={grouping?.includes(block.id) ?? false}
       onToggleSelect={id => setGrouping(g => g && (g.includes(id) ? g.filter(x => x !== id) : [...g, id]))}
+      onResize={actions.setSize}
     />
   )
 
-  const addButton = (extraClass = '') => (
+  const addButton = () => (
     <button
-      className={`${styles.addBlock} ${extraClass}`}
+      className={styles.addBlock}
       onClick={() => actions.add(parentId)}
       aria-label="Add block"
     >
@@ -515,32 +483,18 @@ export function Viewer({ document: doc, editing, actions }: Props) {
         })()}
 
         <div ref={gridAreaRef} className={`${styles.gridArea} ${isNested ? styles.gridAreaNested : ''}`}>
-          {editing && (
-            <div className={styles.layoutToggle} role="group" aria-label="Level tools">
-              {LAYOUTS.map(({ layout, label, Icon }) => (
-                <button
-                  key={layout}
-                  className={`${styles.layoutBtn} ${currentLayout === layout ? styles.layoutBtnActive : ''}`}
-                  onClick={() => actions.setLayout(parentId, layout)}
-                  aria-label={`${label} layout`}
-                  aria-pressed={currentLayout === layout}
-                  title={label}
-                >
-                  <Icon />
-                </button>
-              ))}
-              {blocks.length >= 2 && (
-                <button
-                  className={`${styles.groupBtn} ${grouping ? styles.groupBtnActive : ''}`}
-                  onClick={() => {
-                    setConnectingFrom(null)
-                    setGrouping(g => (g ? null : []))
-                  }}
-                  aria-pressed={grouping !== null}
-                >
-                  Group blocks
-                </button>
-              )}
+          {editing && blocks.length >= 2 && (
+            <div className={styles.levelTools} role="group" aria-label="Level tools">
+              <button
+                className={`${styles.groupBtn} ${grouping ? styles.groupBtnActive : ''}`}
+                onClick={() => {
+                  setConnectingFrom(null)
+                  setGrouping(g => (g ? null : []))
+                }}
+                aria-pressed={grouping !== null}
+              >
+                Group blocks
+              </button>
               {blocks.length >= MAX_BLOCKS_PER_LEVEL && !grouping && (
                 <span className={styles.fullHint}>
                   {blocks.length} of {MAX_BLOCKS_PER_LEVEL}: group blocks to add more
@@ -549,43 +503,11 @@ export function Viewer({ document: doc, editing, actions }: Props) {
             </div>
           )}
 
-          {currentLayout === 'circle' ? (
-            <div ref={circleContainerRef} className={styles.circleGrid} {...dropZone}>
-              {blocks.map((block, i) => {
-                const pos = circlePositions[i]
-                return (
-                  <div
-                    key={block.id}
-                    className={styles.circleItem}
-                    style={pos ? { left: pos.x, top: pos.y } : { visibility: 'hidden' }}
-                  >
-                    {renderCard(block, 'tiles')}
-                  </div>
-                )
-              })}
-              {canAdd && addButton(styles.addBlockCorner)}
-            </div>
-          ) : (
-            <div
-              className={styles.grid}
-              data-layout={currentLayout}
-              data-count={currentLayout === 'tiles' ? blocks.length + (canAdd ? 1 : 0) : undefined}
-              {...dropZone}
-            >
-              {/* In a list, spacers between rows give way first when space runs out,
-                  so cards keep their full height (see .listSpacer). */}
-              {blocks.map((block, i) => (
-                <Fragment key={block.id}>
-                  {currentLayout === 'list' && i > 0 && <div className={styles.listSpacer} aria-hidden="true" />}
-                  {renderCard(block, currentLayout)}
-                </Fragment>
-              ))}
-              {canAdd && currentLayout === 'list' && blocks.length > 0 && (
-                <div className={styles.listSpacer} aria-hidden="true" />
-              )}
-              {canAdd && addButton()}
-            </div>
-          )}
+          {/* One flow for every level: blocks take 2, 3, 4 or 6 of 6 columns by size */}
+          <div className={styles.grid} {...dropZone}>
+            {blocks.map(block => renderCard(block))}
+            {canAdd && addButton()}
+          </div>
 
           {blocks.length === 0 && !editing && (
             <p className={styles.empty}>Nothing here yet</p>

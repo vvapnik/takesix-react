@@ -3,6 +3,7 @@ import {
   addBlock,
   addLink,
   canAddBlock,
+  DEFAULT_SIZE,
   groupBlocks,
   moveBlock,
   removeBlock,
@@ -53,8 +54,9 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
       add(parentId) {
         if (canAddBlock(doc, parentId)) commit(addBlock(doc, parentId, NEW_BLOCK).document)
       },
-      setLayout(parentId, layout) {
-        commit(parentId === null ? { ...doc, layout } : updateBlock(doc, parentId, { layout }))
+      setSize(id, size) {
+        // The default size is not written to the file
+        commit(updateBlock(doc, id, { size: size === DEFAULT_SIZE ? undefined : size }))
       },
       move(id, parentId, index) {
         commit(moveBlock(doc, id, parentId, { index }))

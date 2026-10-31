@@ -223,43 +223,30 @@
   padding: 8px;
 }
 
-/* Grid */
+/* One flow of blocks for every level: 6 columns, each block spans 2, 3, 4
+   or 6 of them by its size (see BlockCard [data-size]). Rows keep the height
+   of their content; spare height goes between them. */
 .grid {
   flex: 1;
   display: grid;
-  gap: 40px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  /* room for a horizontal arrow and its label between blocks */
+  column-gap: 56px;
+  /* room for an arrow and its label between rows */
+  row-gap: 16px;
   align-content: space-evenly;
   min-height: 0;
 }
 
-/* Layout toggle */
-.layoutToggle {
+/* Edit mode: tools for the current level */
+.levelTools {
   display: flex;
-  gap: 3px;
+  gap: 8px;
   margin-bottom: 10px;
 }
 
-.layoutBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--ts-border);
-  border-radius: 6px;
-  background: var(--ts-surface);
-  color: var(--ts-text-faint);
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-
-.layoutBtn:hover {
-  border-color: var(--ts-border-strong);
-  color: var(--ts-text);
-}
-
 .groupBtn {
-  margin-left: 8px;
   height: 28px;
   padding: 0 10px;
   border: 1px solid var(--ts-border);
@@ -285,39 +272,13 @@
 
 .fullHint {
   align-self: center;
-  margin-left: 8px;
   font-size: 0.72rem;
   color: var(--ts-text-faint);
 }
 
-.layoutBtnActive,
-.layoutBtnActive:hover {
-  background: var(--ts-strong);
-  border-color: var(--ts-strong);
-  color: var(--ts-on-strong);
-}
-
-/* List layout grid overrides */
-.grid[data-layout='list'] {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/* Rows never shrink: their text must stay whole */
-.grid[data-layout='list'] > :not(.listSpacer) {
-  flex: none;
-}
-
-/* Elastic gap between rows: 40px when there is room, down to 12px when
-   there is not. Room for an arrow and its label. */
-.listSpacer {
-  flex: 0 1 40px;
-  min-height: 12px;
-}
-
-/* Add block */
+/* Add block: a small (S) tile at the end of the flow */
 .addBlock {
+  grid-column: span 2;
   border: 1.5px dashed var(--ts-border-dashed);
   border-radius: 10px;
   background: transparent;
@@ -334,42 +295,6 @@
   border-color: var(--ts-accent);
   color: var(--ts-accent);
   background: var(--ts-accent-soft);
-}
-
-/* Tiles: cards no narrower than this, so short titles do not make thin cards */
-.grid[data-layout='tiles'] > * {
-  min-width: 220px;
-}
-
-.grid[data-count='1'] { grid-template-columns: auto; justify-content: center; }
-.grid[data-count='2'] { grid-template-columns: repeat(2, auto); justify-content: space-evenly; }
-.grid[data-count='3'] { grid-template-columns: repeat(3, auto); justify-content: space-evenly; }
-.grid[data-count='4'] { grid-template-columns: repeat(2, auto); justify-content: space-evenly; }
-.grid[data-count='5'] { grid-template-columns: repeat(3, auto); justify-content: space-evenly; }
-.grid[data-count='6'] { grid-template-columns: repeat(3, auto); justify-content: space-evenly; }
-
-/* Circle layout */
-.circleGrid {
-  flex: 1;
-  position: relative;
-  min-height: 0;
-}
-
-.circleItem {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  width: 260px;
-}
-
-.addBlockCorner {
-  /* in the corner: the centre of a circle is where arrows cross */
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  min-height: unset;
 }
 
 /* While linking: what is going on and how to stop, floating at the bottom */

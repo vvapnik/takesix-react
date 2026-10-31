@@ -5,6 +5,10 @@ diagrams. One screen shows at most **6 blocks**; click a block to zoom into
 its children. Links between blocks are drawn on every level, including links
 between blocks nested deep inside different parents.
 
+Use it to show an AI agent's answer as a diagram rather than a wall of text:
+render the takesix JSON the agent wrote, let the reader zoom in, refine it in
+the editor.
+
 The document format and all editing logic live in
 [`@takesix/core`](https://github.com/vvapnik/takesix-core); this package only
 renders and edits.
@@ -89,8 +93,11 @@ theme with the `theme` prop, or override variables through `className`:
   a safe subset rendered without HTML: `#`–`###` headings, paragraphs, `-`/`1.`
   lists, fenced code, `**bold**`, `*italic*`, `` `code` ``, and links with
   `http(s)`/`mailto` URLs (other schemes are shown as plain text).
-- **Layouts**: `tiles`, `list` and `circle`, per level (`layout` on the parent
-  block, or on the document for the top level).
+- **Sizes**: a level is one flow of blocks on a 6-column grid. Each block
+  takes a third (`S`), a half (`M`, default), two thirds (`L`) or the full
+  width (`F`); blocks wrap to the next row when they do not fit. Six `F`
+  blocks make a list, three `S` a row of tiles. A full-width card is laid out
+  as a row.
 
 ### Editing
 
@@ -111,7 +118,8 @@ In edit mode you can:
   link it stands for, with their real endpoints;
 - write details: the details button opens the panel with a Markdown editor
   and a live preview;
-- switch the layout of the current level.
+- resize blocks: the size button (⅓ ½ ⅔ 1) cycles the size, or drag the
+  card's right edge, which snaps to the four sizes.
 
 ## Development
 

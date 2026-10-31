@@ -34,6 +34,8 @@ export interface ViewerActions {
   removeLink: (link: Link) => void
   /** Saves a block's Markdown details; an empty string removes them. */
   setDetails: (id: string, details: string) => void
+  /** Wraps sibling blocks into a new parent block, freeing room on the level. */
+  group: (ids: string[]) => void
 }
 
 interface Props {
@@ -86,6 +88,8 @@ export function Viewer({ document: doc, editing, actions }: Props) {
 
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
+  // Blocks chosen for grouping; null when not grouping
+  const [grouping, setGrouping] = useState<string[] | null>(null)
   // Arrow whose links are being edited, by its pair of blocks (see pairKey)
   const [openArrow, setOpenArrow] = useState<string | null>(null)
   const closeArrow = useCallback(() => setOpenArrow(null), [])
@@ -179,8 +183,12 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     if (!editing) {
       setConnectingFrom(null)
       setOpenArrow(null)
+      setGrouping(null)
     }
   }, [editing])
+
+  // Grouping is about one level: leaving it cancels
+  useEffect(() => setGrouping(null), [parentId])
 
   // Close the link editor when its arrow goes away (level changed, links deleted)
   useEffect(() => {
@@ -189,7 +197,11 @@ export function Viewer({ document: doc, editing, actions }: Props) {
 
   // ESC cancels connecting
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setConnectingFrom(null) }
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      setConnectingFrom(null)
+      setGrouping(null)
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -398,6 +410,9 @@ export function Viewer({ document: doc, editing, actions }: Props) {
       }}
       onDragEndBlock={endDrag}
       onShowDetails={setDetailsId}
+      selectable={grouping !== null}
+      selected={grouping?.includes(block.id) ?? false}
+      onToggleSelect={id => setGrouping(g => g && (g.includes(id) ? g.filter(x => x !== id) : [...g, id]))}
     />
   )
 
@@ -437,6 +452,22 @@ export function Viewer({ document: doc, editing, actions }: Props) {
           </span>
         ))}
       </nav>}
+
+      {grouping && (
+        <div className={styles.linkBar} role="status">
+          <span>
+            Select blocks to group: <strong>{grouping.length}</strong> selected
+          </span>
+          <button
+            className={styles.linkBarCancel}
+            disabled={grouping.length < 2}
+            onClick={() => { actions.group(grouping); setGrouping(null) }}
+          >
+            Group
+          </button>
+          <button className={styles.linkBarCancel} onClick={() => setGrouping(null)}>Cancel</button>
+        </div>
+      )}
 
       {linkSource && (
         <div className={styles.linkBar} role="status">
@@ -485,7 +516,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
 
         <div ref={gridAreaRef} className={`${styles.gridArea} ${isNested ? styles.gridAreaNested : ''}`}>
           {editing && (
-            <div className={styles.layoutToggle} role="group" aria-label="Layout">
+            <div className={styles.layoutToggle} role="group" aria-label="Level tools">
               {LAYOUTS.map(({ layout, label, Icon }) => (
                 <button
                   key={layout}
@@ -498,6 +529,23 @@ export function Viewer({ document: doc, editing, actions }: Props) {
                   <Icon />
                 </button>
               ))}
+              {blocks.length >= 2 && (
+                <button
+                  className={`${styles.groupBtn} ${grouping ? styles.groupBtnActive : ''}`}
+                  onClick={() => {
+                    setConnectingFrom(null)
+                    setGrouping(g => (g ? null : []))
+                  }}
+                  aria-pressed={grouping !== null}
+                >
+                  Group blocks
+                </button>
+              )}
+              {blocks.length >= MAX_BLOCKS_PER_LEVEL && !grouping && (
+                <span className={styles.fullHint}>
+                  {blocks.length} of {MAX_BLOCKS_PER_LEVEL}: group blocks to add more
+                </span>
+              )}
             </div>
           )}
 

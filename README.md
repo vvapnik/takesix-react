@@ -84,6 +84,9 @@ In edit mode you can:
 
 - rename blocks and edit descriptions in place;
 - add and delete blocks; a level stops offering "add" at 6 blocks;
+- group blocks: "Group blocks" in the toolbar, select two or more, Group. They
+  move into a new block ("New group") where the first of them was, which frees
+  room on a full level;
 - reorder blocks by dragging the dotted handle on their left;
 - link blocks: press the arrow button on the source, then click the target.
   The target may be on any level: while linking, open blocks ("N more inside")

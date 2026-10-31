@@ -149,6 +149,36 @@
   cursor: zoom-in;
 }
 
+.selectOverlay {
+  cursor: pointer;
+}
+
+/* Round check on the drag handle strip, clear of the block's own icon */
+.selectMark {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #b0bfda;
+  background: #ffffff;
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.cardSelected {
+  border-color: #3d6aff !important;
+  box-shadow: 0 0 0 2px rgba(61, 106, 255, 0.3) !important;
+}
+
+.cardSelected .selectMark {
+  border-color: #3d6aff;
+  background: #3d6aff;
+}
+
 .connectOverlayConnected {
   cursor: pointer;
 }

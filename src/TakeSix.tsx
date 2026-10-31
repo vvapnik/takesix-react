@@ -3,6 +3,7 @@ import {
   addBlock,
   addLink,
   canAddBlock,
+  groupBlocks,
   moveBlock,
   removeBlock,
   updateBlock,
@@ -53,6 +54,9 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
       },
       move(id, parentId, index) {
         commit(moveBlock(doc, id, parentId, { index }))
+      },
+      group(ids) {
+        commit(groupBlocks(doc, ids, { title: 'New group', description: `${ids.length} blocks` }).document)
       },
       setDetails(id, details) {
         commit(updateBlock(doc, id, { details: details.trim() ? details : undefined }))

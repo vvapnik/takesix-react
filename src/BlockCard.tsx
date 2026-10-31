@@ -33,12 +33,17 @@ interface Props {
   onDragOverBlock: (id: string, position: DropPosition) => void
   onDragEndBlock: () => void
   onShowDetails: (id: string) => void
+  /** Choosing blocks to group: a click selects instead of opening. */
+  selectable: boolean
+  selected: boolean
+  onToggleSelect: (id: string) => void
 }
 
 export function BlockCard({
   block, layout, editing, onRename, onDescribe, onDelete, onAddChild, onDrillIn,
   connectingFrom, canLinkTo, isConnected, onStartConnect, onConnectTarget, onRegisterEl,
   isDragged, dropPosition, onDragStartBlock, onDragOverBlock, onDragEndBlock, onShowDetails,
+  selectable, selected, onToggleSelect,
 }: Props) {
   const hasDetails = !!block.details?.trim()
   // Direct children only: the counter tells what the next screen holds.
@@ -87,7 +92,8 @@ export function BlockCard({
   }
 
   let cardClass = styles.card
-  if (hasChildren && !isConnectable) cardClass += ` ${styles.cardZoomable}`
+  if (hasChildren && !isConnectable && !selectable) cardClass += ` ${styles.cardZoomable}`
+  if (selected) cardClass += ` ${styles.cardSelected}`
   if (layout === 'list') cardClass += ` ${styles.cardList}`
   if (editing) cardClass += ` ${styles.cardEditing}`
   else if (hasDetails) cardClass += ` ${styles.cardWithDetails}`
@@ -132,6 +138,17 @@ export function BlockCard({
 
 
       {/* Transparent overlay that captures clicks when this card is a connection target */}
+      {selectable && (
+        <button
+          className={`${styles.connectOverlay} ${styles.selectOverlay}`}
+          onClick={e => { e.stopPropagation(); onToggleSelect(block.id) }}
+          aria-label={`Select ${block.title}`}
+          aria-pressed={selected}
+        >
+          <span className={styles.selectMark} aria-hidden="true">{selected ? '✓' : ''}</span>
+        </button>
+      )}
+
       {isConnectable && (
         <button
           className={`${styles.connectOverlay} ${isConnected ? styles.connectOverlayConnected : ''}`}

@@ -338,6 +338,45 @@ describe('TakeSix (editing)', () => {
     expect(findBlock(latest.doc, 'db')).not.toHaveProperty('details')
   })
 
+  it('groups blocks to make room on a full level', async () => {
+    const full = sampleDoc()
+    full.blocks.push(
+      { id: 'cdn', title: 'CDN' },
+      { id: 'queue', title: 'Queue' },
+      { id: 'mail', title: 'Mail' },
+    )
+    const { user, latest } = renderEditable(full)
+    expect(screen.queryByRole('button', { name: 'Add block' })).toBeNull()
+    expect(screen.getByText('6 of 6: group blocks to add more')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Group blocks' }))
+    const bar = screen.getByRole('status')
+    expect(within(bar).getByRole('button', { name: 'Group' })).toBeDisabled()
+
+    // selecting does not open blocks
+    await user.click(screen.getByRole('button', { name: 'Select Mail' }))
+    await user.click(screen.getByRole('button', { name: 'Select Queue' }))
+    expect(screen.getByRole('button', { name: 'Select Queue' })).toHaveAttribute('aria-pressed', 'true')
+    expect(bar).toHaveTextContent('2 selected')
+    await user.click(within(bar).getByRole('button', { name: 'Group' }))
+
+    // the group takes the place of the first of them, in level order
+    expect(latest.doc.blocks.map(b => b.id)).toHaveLength(5)
+    const group = latest.doc.blocks[4]!
+    expect(group).toMatchObject({ title: 'New group', description: '2 blocks' })
+    expect(group.children!.map(b => b.id)).toEqual(['queue', 'mail'])
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Add block' })).toBeInTheDocument()
+  })
+
+  it('cancels grouping with Esc', async () => {
+    const { user } = renderEditable()
+    await user.click(screen.getByRole('button', { name: 'Group blocks' }))
+    expect(screen.getByRole('button', { name: 'Select API' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('button', { name: 'Select API' })).toBeNull()
+  })
+
   it('stores the top-level layout in the document', async () => {
     const { user, latest } = renderEditable()
     await user.click(screen.getByRole('button', { name: 'List layout' }))

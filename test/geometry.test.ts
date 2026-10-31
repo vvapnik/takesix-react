@@ -59,6 +59,20 @@ describe('routeArrows', () => {
     expect(both!.d).toMatch(/^M 114 30 C .* 186 30$/)
   })
 
+  it('shrinks the head offsets to fit a narrow gap instead of running backwards', () => {
+    // rows 12px apart: the path must still go down, from y=60 towards y=72
+    const rects = new Map([['a', rect(0, 0)], ['b', rect(0, 72)]])
+    const [arrow] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b', headAtEnd: true }], rects, container)
+    const nums = arrow!.d.split(/[ ,]+/).filter(Boolean).filter(t => !/[A-Z]/.test(t)).map(Number)
+    const startY = nums[1]!, endY = nums[nums.length - 1]!
+    expect(startY).toBe(60)
+    expect(endY).toBeGreaterThan(startY)
+    expect(endY).toBeLessThanOrEqual(72)
+    // the curve must arrive going down: its last control point is above the end
+    const lastControlY = nums[nums.length - 3]!
+    expect(lastControlY).toBeLessThanOrEqual(endY)
+  })
+
   it('skips arrows whose cards are not on screen', () => {
     const rects = new Map([['a', rect(0, 0)]])
     expect(routeArrows([{ key: 'a|x', fromId: 'a', toId: 'x' }], rects, container)).toEqual([])

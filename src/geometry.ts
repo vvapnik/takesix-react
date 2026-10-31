@@ -33,6 +33,18 @@ export const HEAD_GAP = 4
     beyond it, so the line never shows through the tip. */
 export const HEAD_LENGTH = 10
 
+/** Shortest visible line left between two arrowheads. */
+const MIN_LINE = 2
+
+/** Distance between two facing edges (right → left, bottom → top…), or null if they do not face each other. */
+function facingGap(exit: Edge, entry: Edge, p1: Point, p2: Point): number | null {
+  if (exit === 'right' && entry === 'left') return p2.x - p1.x
+  if (exit === 'left' && entry === 'right') return p1.x - p2.x
+  if (exit === 'bottom' && entry === 'top') return p2.y - p1.y
+  if (exit === 'top' && entry === 'bottom') return p1.y - p2.y
+  return null
+}
+
 /** Moves a point on a card edge away from the card, along the edge's outward normal. */
 function away(p: Point, edge: Edge, distance: number): Point {
   switch (edge) {
@@ -127,9 +139,9 @@ export function controlPoints(
     return [{ x: p1.x + s * offset, y: p1.y }, { x: p2.x - s * offset, y: p2.y }]
   }
 
-  const fromEdgeY = exitEdge === 'bottom' ? fromRect.bottom : fromRect.top
-  const toEdgeY = entryEdge === 'top' ? toRect.top : toRect.bottom
-  const midY = (fromEdgeY + toEdgeY) / 2 - origin.y
+  // Between the path's own ends, not the card edges: the ends may be pulled
+  // back for arrowheads, and a control point beyond an end turns the head around.
+  const midY = (p1.y + p2.y) / 2
   return [{ x: p1.x, y: midY }, { x: p2.x, y: midY }]
 }
 
@@ -182,8 +194,20 @@ export function routeArrows(requests: ArrowRequest[], rects: Map<string, Rect>, 
     const entryPool = pools.get(`${c.toId}-${c.entryEdge}`)!
     const exitIdx = exitPool.findIndex(s => s.ci === ci && s.role === 'exit')
     const entryIdx = entryPool.findIndex(s => s.ci === ci && s.role === 'entry')
-    const p1 = away(edgePoint(c.fromRect, c.exitEdge, exitIdx, exitPool.length, origin), c.exitEdge, c.headAtStart ? HEAD_GAP + HEAD_LENGTH : 0)
-    const p2 = away(edgePoint(c.toRect, c.entryEdge, entryIdx, entryPool.length, origin), c.entryEdge, c.headAtEnd ? HEAD_GAP + HEAD_LENGTH : 0)
+    const e1 = edgePoint(c.fromRect, c.exitEdge, exitIdx, exitPool.length, origin)
+    const e2 = edgePoint(c.toRect, c.entryEdge, entryIdx, entryPool.length, origin)
+    let startOffset = c.headAtStart ? HEAD_GAP + HEAD_LENGTH : 0
+    let endOffset = c.headAtEnd ? HEAD_GAP + HEAD_LENGTH : 0
+    // Facing edges with a narrow gap between them (tight list rows): shrink the
+    // offsets to fit, or the path would run backwards and flip the heads.
+    const facing = facingGap(c.exitEdge, c.entryEdge, e1, e2)
+    if (facing !== null && startOffset + endOffset > facing - MIN_LINE) {
+      const k = Math.max(0, facing - MIN_LINE) / (startOffset + endOffset)
+      startOffset *= k
+      endOffset *= k
+    }
+    const p1 = away(e1, c.exitEdge, startOffset)
+    const p2 = away(e2, c.entryEdge, endOffset)
     const [c1, c2] = controlPoints(c.fromRect, c.toRect, origin, c.exitEdge, c.entryEdge, p1, p2)
     return {
       key: c.key,

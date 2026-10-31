@@ -8,11 +8,11 @@
   box-sizing: border-box;
   padding: 20px 22px;
   overflow-y: auto;
-  background: #ffffff;
-  border-left: 1px solid #d0d7e2;
+  background: var(--ts-surface);
+  border-left: 1px solid var(--ts-border);
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.08);
   font-size: 0.85rem;
-  color: #1a2332;
+  color: var(--ts-text);
   cursor: default;
   animation: slideIn 0.18s ease-out;
 }
@@ -32,13 +32,13 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  color: #8fa3b8;
+  color: var(--ts-text-faint);
   cursor: pointer;
 }
 
 .close:hover {
-  background: #f0f2f5;
-  color: #1a2332;
+  background: var(--ts-bg);
+  color: var(--ts-text);
 }
 
 .head {
@@ -62,7 +62,7 @@
 
 .description {
   margin: 0;
-  color: #7a8a9e;
+  color: var(--ts-text-muted);
   font-size: 0.8rem;
   line-height: 1.4;
 }
@@ -72,8 +72,9 @@
   width: 100%;
   min-height: 160px;
   padding: 8px 10px;
-  border: 1px solid #d0d7e2;
+  border: 1px solid var(--ts-border);
   border-radius: 8px;
+  background: var(--ts-surface);
   font: 0.8rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
   color: inherit;
   resize: vertical;
@@ -81,13 +82,13 @@
 }
 
 .editor:focus {
-  border-color: #3d6aff;
+  border-color: var(--ts-accent);
 }
 
 .editor + .body {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px dashed #d0d7e2;
+  border-top: 1px dashed var(--ts-border);
 }
 
 .body {
@@ -99,19 +100,19 @@
 .body p, .body ul, .body ol, .body pre { margin: 0 0 10px; }
 .body ul, .body ol { padding-left: 20px; }
 .body h3, .body h4, .body h5 { margin: 14px 0 6px; font-size: 0.9rem; }
-.body a { color: #3d6aff; }
+.body a { color: var(--ts-accent); }
 
 .body code {
   padding: 1px 4px;
   border-radius: 4px;
-  background: #f0f2f5;
+  background: var(--ts-bg);
   font: 0.78rem ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .body pre {
   padding: 8px 10px;
   border-radius: 6px;
-  background: #f0f2f5;
+  background: var(--ts-bg);
   overflow-x: auto;
 }
 
@@ -122,5 +123,5 @@
 
 .empty {
   margin: 0;
-  color: #8fa3b8;
+  color: var(--ts-text-faint);
 }

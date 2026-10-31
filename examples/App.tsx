@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createDocument, formatIssues, parseDocument, serializeDocument, type TakeSixDocument } from '@takesix/core'
-import { TakeSix } from '../src'
+import { TakeSix, type Theme } from '../src'
 import { sample } from './sample'
 // Inlined so the logo takes the text colour (it draws with currentColor)
 import logoSvg from './takesix-logo.svg?raw'
@@ -10,6 +10,7 @@ export function App() {
   const [doc, setDoc] = useState<TakeSixDocument>(sample)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  const [theme, setTheme] = useState<Theme>('auto')
   // Remount the viewer on New/Import so navigation starts at the top level.
   const [version, setVersion] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -57,7 +58,7 @@ export function App() {
   }
 
   return (
-    <div className={styles.app}>
+    <div className={styles.app} data-theme={theme}>
       <header className={styles.header}>
         <span className={styles.logo}>
           <span className={styles.logoMark} aria-hidden="true" dangerouslySetInnerHTML={{ __html: logoSvg }} />
@@ -69,7 +70,14 @@ export function App() {
         <button className={styles.btn} onClick={() => fileInputRef.current?.click()}>Import</button>
         <button className={styles.btn} onClick={handleExport}>Export</button>
         <button
-          className={`${styles.btn} ${styles.editBtn} ${editing ? styles.btnActive : ''}`}
+          className={`${styles.btn} ${styles.editBtn} ${styles.themeBtn}`}
+          onClick={() => setTheme(t => (t === 'auto' ? 'light' : t === 'light' ? 'dark' : 'auto'))}
+          title="Colour theme: auto follows the system"
+        >
+          Theme: {theme[0]!.toUpperCase() + theme.slice(1)}
+        </button>
+        <button
+          className={`${styles.btn} ${editing ? styles.btnActive : ''}`}
           onClick={() => setEditing(e => !e)}
           aria-pressed={editing}
         >
@@ -92,7 +100,7 @@ export function App() {
       )}
 
       <main className={styles.main}>
-        <TakeSix key={version} document={doc} onChange={setDoc} editing={editing} />
+        <TakeSix key={version} document={doc} onChange={setDoc} editing={editing} theme={theme} />
       </main>
     </div>
   )

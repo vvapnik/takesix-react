@@ -55,7 +55,21 @@ view: the Edit toggle belongs to your app (a toolbar, a menu).
 | `document` | `TakeSixDocument` | The diagram. Validate untrusted input with `parseDocument` first. |
 | `onChange` | `(doc) => void` | Receives the edited document. Without it the diagram is read-only. |
 | `editing` | `boolean` | Show the edit controls. Ignored without `onChange`. |
+| `theme` | `'auto' \| 'light' \| 'dark'` | Colour theme. `auto` (default) follows the system setting. |
 | `className` | `string` | Extra class for the root element. |
+
+### Theming
+
+All colours are CSS variables on the root element (`--ts-bg`, `--ts-surface`,
+`--ts-text`, `--ts-accent`, …; see `src/TakeSix.module.css`). Pick a built-in
+theme with the `theme` prop, or override variables through `className`:
+
+```css
+.myDiagram {
+  --ts-accent: #0f9d58;
+  --ts-bg: transparent;
+}
+```
 
 ### What is shown
 

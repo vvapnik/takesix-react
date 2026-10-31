@@ -24,7 +24,7 @@
 }
 
 .crumbSep {
-  color: #b0b8c4;
+  color: var(--ts-icon);
   padding: 0 6px;
   font-size: 0.8rem;
 }
@@ -36,19 +36,19 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 500;
-  color: #8fa3b8;
+  color: var(--ts-text-faint);
   padding: 2px 6px;
   border-radius: 4px;
   transition: color 0.15s, background 0.15s;
 }
 
 .crumb:hover:not(:disabled) {
-  color: #3d6aff;
-  background: #e8eeff;
+  color: var(--ts-accent);
+  background: var(--ts-accent-soft);
 }
 
 .crumb:disabled { cursor: default; }
-.crumbActive { color: #1a2332; }
+.crumbActive { color: var(--ts-text); }
 
 /* Full-screen backdrop — click outside the card to zoom out */
 .backdrop {
@@ -71,8 +71,8 @@
 
 /* When nested: looks exactly like an enlarged BlockCard */
 .slideCard {
-  background: #ffffff;
-  border: 1px solid #d0d7e2;
+  background: var(--ts-surface);
+  border: 1px solid var(--ts-border);
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   overflow: hidden;
@@ -96,16 +96,16 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border: 1px solid #d0d7e2;
+  border: 1px solid var(--ts-border);
   border-radius: 999px;
   font-size: 0.75rem;
-  color: #5a6a7e;
+  color: var(--ts-text-secondary);
   cursor: pointer;
 }
 
 .headerDetailsBtn:hover {
-  border-color: #3d6aff;
-  color: #3d6aff;
+  border-color: var(--ts-accent);
+  color: var(--ts-accent);
 }
 
 /* Top level: no card around it, so no inner padding */
@@ -129,14 +129,14 @@
   margin: 0 0 5px;
   font-size: 1rem;
   font-weight: 600;
-  color: #1a2332;
+  color: var(--ts-text);
   letter-spacing: 0.01em;
 }
 
 .slideDescription {
   margin: 0;
   font-size: 0.8rem;
-  color: #7a8a9e;
+  color: var(--ts-text-muted);
   line-height: 1.4;
 }
 
@@ -163,7 +163,7 @@
 /* Arrows */
 .arrow {
   fill: none;
-  stroke: #3d6aff;
+  stroke: var(--ts-accent);
   stroke-width: 2;
   stroke-opacity: 0.7;
 }
@@ -195,31 +195,31 @@
 }
 
 .arrowHead {
-  fill: #3d6aff;
+  fill: var(--ts-accent);
 }
 
 .arrowLabel {
   font-size: 11px;
   font-weight: 500;
-  fill: #3d6aff;
+  fill: var(--ts-accent);
   paint-order: stroke;
-  stroke: #f0f2f5;
+  stroke: var(--ts-bg);
   stroke-width: 4px;
   stroke-linejoin: round;
 }
 
 .empty {
   margin: auto;
-  color: #8fa3b8;
+  color: var(--ts-text-faint);
   font-size: 0.85rem;
 }
 
 /* Nested: the opened block's area inside the enlarged card */
 .gridAreaNested {
   margin: 0 10px 10px;
-  border: 1.5px dashed #c4cedc;
+  border: 1.5px dashed var(--ts-border-dashed);
   border-radius: 7px;
-  background: #f7f9fc;
+  background: var(--ts-sunken);
   padding: 8px;
 }
 
@@ -245,56 +245,56 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 1px solid #d0d7e2;
+  border: 1px solid var(--ts-border);
   border-radius: 6px;
-  background: #fff;
-  color: #8fa3b8;
+  background: var(--ts-surface);
+  color: var(--ts-text-faint);
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 
 .layoutBtn:hover {
-  border-color: #b0bfda;
-  color: #1a2332;
+  border-color: var(--ts-border-strong);
+  color: var(--ts-text);
 }
 
 .groupBtn {
   margin-left: 8px;
   height: 28px;
   padding: 0 10px;
-  border: 1px solid #d0d7e2;
+  border: 1px solid var(--ts-border);
   border-radius: 6px;
-  background: #fff;
-  color: #5a6a7e;
+  background: var(--ts-surface);
+  color: var(--ts-text-secondary);
   font: inherit;
   font-size: 0.75rem;
   cursor: pointer;
 }
 
 .groupBtn:hover {
-  border-color: #b0bfda;
-  color: #1a2332;
+  border-color: var(--ts-border-strong);
+  color: var(--ts-text);
 }
 
 .groupBtnActive,
 .groupBtnActive:hover {
-  background: #1a2332;
-  border-color: #1a2332;
-  color: #fff;
+  background: var(--ts-strong);
+  border-color: var(--ts-strong);
+  color: var(--ts-on-strong);
 }
 
 .fullHint {
   align-self: center;
   margin-left: 8px;
   font-size: 0.72rem;
-  color: #8fa3b8;
+  color: var(--ts-text-faint);
 }
 
 .layoutBtnActive,
 .layoutBtnActive:hover {
-  background: #1a2332;
-  border-color: #1a2332;
-  color: #fff;
+  background: var(--ts-strong);
+  border-color: var(--ts-strong);
+  color: var(--ts-on-strong);
 }
 
 /* List layout grid overrides */
@@ -318,10 +318,10 @@
 
 /* Add block */
 .addBlock {
-  border: 1.5px dashed #c4cedc;
+  border: 1.5px dashed var(--ts-border-dashed);
   border-radius: 10px;
   background: transparent;
-  color: #b0bfda;
+  color: var(--ts-border-strong);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -331,9 +331,9 @@
 }
 
 .addBlock:hover {
-  border-color: #3d6aff;
-  color: #3d6aff;
-  background: #f0f4ff;
+  border-color: var(--ts-accent);
+  color: var(--ts-accent);
+  background: var(--ts-accent-soft);
 }
 
 /* Tiles: cards no narrower than this, so short titles do not make thin cards */
@@ -384,8 +384,8 @@
   gap: 12px;
   padding: 8px 10px 8px 16px;
   border-radius: 999px;
-  background: #1a2332;
-  color: #ffffff;
+  background: var(--ts-strong);
+  color: var(--ts-on-strong);
   font-size: 0.78rem;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   white-space: nowrap;
@@ -396,12 +396,12 @@
   cursor: pointer;
   padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--ts-on-strong) 14%, transparent);
   font-weight: 500;
 }
 
 .linkBarCancel:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.24);
+  background: color-mix(in srgb, var(--ts-on-strong) 24%, transparent);
 }
 
 .linkBarCancel:disabled {

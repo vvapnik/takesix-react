@@ -23,13 +23,17 @@ export interface TakeSixProps {
    * so the component itself is only the view. Ignored without `onChange`.
    */
   editing?: boolean
+  /** Colour theme. `auto` (default) follows the system setting. */
+  theme?: Theme
   className?: string
 }
+
+export type Theme = 'light' | 'dark' | 'auto'
 
 const NEW_BLOCK = { title: 'New block', description: 'Description' }
 
 /** Viewer and editor for a takesix document: one level on screen, click a block to open it. */
-export function TakeSix({ document: doc, onChange, editing: editingProp = false, className }: TakeSixProps) {
+export function TakeSix({ document: doc, onChange, editing: editingProp = false, theme = 'auto', className }: TakeSixProps) {
   const editing = onChange !== undefined && editingProp
 
   const actions = useMemo<ViewerActions>(() => {
@@ -89,7 +93,7 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
   }, [doc, onChange])
 
   return (
-    <div className={`${styles.takeSix} ${className ?? ''}`}>
+    <div className={`${styles.takeSix} ${className ?? ''}`} data-theme={theme}>
       <Viewer document={doc} editing={editing} actions={actions} />
     </div>
   )

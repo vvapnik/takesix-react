@@ -1,10 +1,86 @@
+/* Colour tokens. Light by default; data-theme="dark" forces dark, and
+   data-theme="auto" follows the system setting. Override any --ts-* variable
+   on the root element to restyle. */
 .takeSix {
+  --ts-bg: #f0f2f5;
+  --ts-surface: #ffffff;
+  --ts-sunken: #f7f9fc;
+  --ts-border: #d0d7e2;
+  --ts-border-strong: #b0bfda;
+  --ts-border-dashed: #c4cedc;
+  --ts-divider: #e8edf4;
+  --ts-text: #1a2332;
+  --ts-text-secondary: #5a6a7e;
+  --ts-text-muted: #7a8a9e;
+  --ts-text-faint: #8fa3b8;
+  --ts-icon: #c0c8d4;
+  --ts-accent: #3d6aff;
+  --ts-accent-hover: #2a55e8;
+  --ts-accent-soft: #e8eeff;
+  --ts-strong: #1a2332;
+  --ts-on-strong: #ffffff;
+  --ts-danger: #b42318;
+  --ts-danger-soft: #fee2e2;
+  --ts-danger-border: #f5c2c2;
+  color-scheme: light;
+
   height: 100%;
   min-height: 0;
   padding: 12px 40px 24px;
   box-sizing: border-box;
-  background: #f0f2f5;
+  background: var(--ts-bg);
+  color: var(--ts-text);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   position: relative;
   overflow: hidden;
+}
+
+.takeSix[data-theme='dark'] {
+  --ts-bg: #0f141b;
+  --ts-surface: #18202b;
+  --ts-sunken: #141b24;
+  --ts-border: #2c3644;
+  --ts-border-strong: #3f4c5e;
+  --ts-border-dashed: #364254;
+  --ts-divider: #242d3a;
+  --ts-text: #e6ebf2;
+  --ts-text-secondary: #b3bfcd;
+  --ts-text-muted: #94a3b5;
+  --ts-text-faint: #7d8ca0;
+  --ts-icon: #56647a;
+  --ts-accent: #6b8cff;
+  --ts-accent-hover: #8aa4ff;
+  --ts-accent-soft: #1e2a48;
+  --ts-strong: #e6ebf2;
+  --ts-on-strong: #0f141b;
+  --ts-danger: #f87171;
+  --ts-danger-soft: #3a1d1f;
+  --ts-danger-border: #7f2d2d;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  .takeSix[data-theme='auto'] {
+    --ts-bg: #0f141b;
+    --ts-surface: #18202b;
+    --ts-sunken: #141b24;
+    --ts-border: #2c3644;
+    --ts-border-strong: #3f4c5e;
+    --ts-border-dashed: #364254;
+    --ts-divider: #242d3a;
+    --ts-text: #e6ebf2;
+    --ts-text-secondary: #b3bfcd;
+    --ts-text-muted: #94a3b5;
+    --ts-text-faint: #7d8ca0;
+    --ts-icon: #56647a;
+    --ts-accent: #6b8cff;
+    --ts-accent-hover: #8aa4ff;
+    --ts-accent-soft: #1e2a48;
+    --ts-strong: #e6ebf2;
+    --ts-on-strong: #0f141b;
+    --ts-danger: #f87171;
+    --ts-danger-soft: #3a1d1f;
+    --ts-danger-border: #7f2d2d;
+    color-scheme: dark;
+  }
 }

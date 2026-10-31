@@ -1,6 +1,6 @@
 .card {
-  background: #ffffff;
-  border: 1px solid #d0d7e2;
+  background: var(--ts-surface);
+  border: 1px solid var(--ts-border);
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -19,7 +19,7 @@
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: #c0c8d4;
+  color: var(--ts-icon);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -31,8 +31,8 @@
 }
 
 .deleteBtn:hover {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--ts-danger-soft);
+  color: var(--ts-danger);
 }
 
 .detailsBtn {
@@ -44,7 +44,7 @@
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: #c0c8d4;
+  color: var(--ts-icon);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -60,12 +60,12 @@
 }
 
 .detailsBtnFilled {
-  color: #8fa3b8;
+  color: var(--ts-text-faint);
 }
 
 .detailsBtn:hover {
-  background: #e8eeff;
-  color: #3d6aff;
+  background: var(--ts-accent-soft);
+  color: var(--ts-accent);
 }
 
 .connectBtn {
@@ -77,7 +77,7 @@
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: #c0c8d4;
+  color: var(--ts-icon);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -89,37 +89,37 @@
 }
 
 .connectBtn:hover {
-  background: #e8eeff;
-  color: #3d6aff;
+  background: var(--ts-accent-soft);
+  color: var(--ts-accent);
 }
 
 .connectBtnActive {
-  background: #3d6aff;
-  color: #fff;
+  background: var(--ts-accent);
+  color: #ffffff;
 }
 
 .connectBtnActive:hover {
-  background: #2a55e8;
-  color: #fff;
+  background: var(--ts-accent-hover);
+  color: #ffffff;
 }
 
 /* Connection visual states */
 .cardConnectingSource {
-  border-color: #3d6aff !important;
+  border-color: var(--ts-accent) !important;
   box-shadow: 0 0 0 2px rgba(61, 106, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
 }
 
 .cardConnectable {
-  border-color: #b0bfda;
+  border-color: var(--ts-border-strong);
 }
 
 .cardConnectable:hover {
-  border-color: #3d6aff !important;
+  border-color: var(--ts-accent) !important;
   box-shadow: 0 0 0 2px rgba(61, 106, 255, 0.15) !important;
 }
 
 .cardConnected {
-  border-color: #3d6aff !important;
+  border-color: var(--ts-accent) !important;
   box-shadow: 0 0 0 2px rgba(61, 106, 255, 0.3) !important;
 }
 
@@ -161,8 +161,9 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 1.5px solid #b0bfda;
-  background: #ffffff;
+  border: 1.5px solid var(--ts-border-strong);
+  background: var(--ts-surface);
+  /* the check is shown on the accent background only */
   color: #ffffff;
   font-size: 11px;
   line-height: 16px;
@@ -170,13 +171,13 @@
 }
 
 .cardSelected {
-  border-color: #3d6aff !important;
+  border-color: var(--ts-accent) !important;
   box-shadow: 0 0 0 2px rgba(61, 106, 255, 0.3) !important;
 }
 
 .cardSelected .selectMark {
-  border-color: #3d6aff;
-  background: #3d6aff;
+  border-color: var(--ts-accent);
+  background: var(--ts-accent);
 }
 
 .connectOverlayConnected {
@@ -205,7 +206,7 @@
 }
 
 .addInside:hover {
-  color: #3d6aff;
+  color: var(--ts-accent);
 }
 
 /* Tall strip of dots along the left edge: grab it to drag the block */
@@ -216,9 +217,9 @@
   bottom: 0;
   width: 18px;
   cursor: grab;
-  border-right: 1px solid #e8edf4;
-  background-color: #f7f9fc;
-  background-image: radial-gradient(circle, #b0bfda 1.2px, transparent 1.6px);
+  border-right: 1px solid var(--ts-divider);
+  background-color: var(--ts-sunken);
+  background-image: radial-gradient(circle, var(--ts-border-strong) 1.2px, transparent 1.6px);
   background-size: 6px 6px;
   background-position: 3px 3px;
   border-radius: 10px 0 0 10px;
@@ -227,8 +228,8 @@
 }
 
 .dragHandle:hover {
-  background-color: #eef2fb;
-  background-image: radial-gradient(circle, #3d6aff 1.2px, transparent 1.6px);
+  background-color: var(--ts-accent-soft);
+  background-image: radial-gradient(circle, var(--ts-accent) 1.2px, transparent 1.6px);
 }
 
 .dragHandle:active {
@@ -240,10 +241,10 @@
 }
 
 /* Drop indicator: a line just outside the card, on the side the block lands */
-.card[data-drop='before'][data-axis='y'] { box-shadow: 0 -4px 0 -1px #3d6aff; }
-.card[data-drop='after'][data-axis='y'] { box-shadow: 0 4px 0 -1px #3d6aff; }
-.card[data-drop='before'][data-axis='x'] { box-shadow: -4px 0 0 -1px #3d6aff; }
-.card[data-drop='after'][data-axis='x'] { box-shadow: 4px 0 0 -1px #3d6aff; }
+.card[data-drop='before'][data-axis='y'] { box-shadow: 0 -4px 0 -1px var(--ts-accent); }
+.card[data-drop='after'][data-axis='y'] { box-shadow: 0 4px 0 -1px var(--ts-accent); }
+.card[data-drop='before'][data-axis='x'] { box-shadow: -4px 0 0 -1px var(--ts-accent); }
+.card[data-drop='after'][data-axis='x'] { box-shadow: 4px 0 0 -1px var(--ts-accent); }
 
 .cardZoomable {
   cursor: zoom-in;
@@ -256,7 +257,7 @@
 }
 
 .card:hover {
-  border-color: #b0bfda;
+  border-color: var(--ts-border-strong);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
@@ -283,14 +284,14 @@
   margin: 0 0 5px;
   font-size: 1rem;
   font-weight: 600;
-  color: #1a2332;
+  color: var(--ts-text);
   letter-spacing: 0.01em;
 }
 
 .description {
   margin: 0;
   font-size: 0.8rem;
-  color: #7a8a9e;
+  color: var(--ts-text-muted);
   line-height: 1.4;
 }
 
@@ -312,7 +313,7 @@
 }
 
 .editable {
-  border-bottom: 1.5px dashed #b0bfda;
+  border-bottom: 1.5px dashed var(--ts-border-strong);
   border-radius: 2px;
   cursor: text;
   outline: none;
@@ -322,11 +323,11 @@
 
 .editable:empty::before {
   content: attr(data-placeholder);
-  color: #c0c8d4;
+  color: var(--ts-icon);
 }
 
 .editable:focus {
-  border-bottom-color: #3d6aff;
+  border-bottom-color: var(--ts-accent);
   background: rgba(61, 106, 255, 0.05);
 }
 
@@ -339,17 +340,17 @@
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.02em;
-  color: #8fa3b8;
+  color: var(--ts-text-faint);
   white-space: nowrap;
   transition: color 0.15s;
 }
 
 .cardZoomable:hover .inside {
-  color: #3d6aff;
+  color: var(--ts-accent);
 }
 
 .inside:focus-visible {
-  outline: 2px solid #3d6aff;
+  outline: 2px solid var(--ts-accent);
   outline-offset: 2px;
   border-radius: 4px;
 }

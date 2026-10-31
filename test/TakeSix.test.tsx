@@ -94,6 +94,14 @@ describe('TakeSix (read-only)', () => {
     expect(screen.getByRole('complementary')).toHaveTextContent('All public endpoints')
   })
 
+  it('follows the system theme by default and can force one', () => {
+    const { container, rerender } = render(<TakeSix document={sampleDoc()} />)
+    const root = () => container.firstElementChild as HTMLElement
+    expect(root()).toHaveAttribute('data-theme', 'auto')
+    rerender(<TakeSix document={sampleDoc()} theme="dark" />)
+    expect(root()).toHaveAttribute('data-theme', 'dark')
+  })
+
   it('ignores editing without onChange', () => {
     render(<TakeSix document={sampleDoc()} editing />)
     expect(screen.queryByRole('button', { name: 'Add block' })).toBeNull()

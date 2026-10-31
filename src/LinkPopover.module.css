@@ -7,12 +7,12 @@
   max-height: 60%;
   overflow-y: auto;
   padding: 12px;
-  border: 1px solid #d0d7e2;
+  border: 1px solid var(--ts-border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--ts-surface);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   font-size: 0.78rem;
-  color: #1a2332;
+  color: var(--ts-text);
   cursor: default;
 }
 
@@ -27,19 +27,19 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  color: #8fa3b8;
+  color: var(--ts-text-faint);
   cursor: pointer;
 }
 
 .close:hover {
-  background: #f0f2f5;
-  color: #1a2332;
+  background: var(--ts-bg);
+  color: var(--ts-text);
 }
 
 .row + .row {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #e8edf4;
+  border-top: 1px solid var(--ts-divider);
 }
 
 .ends {
@@ -49,22 +49,23 @@
 }
 
 .endsArrow {
-  color: #3d6aff;
+  color: var(--ts-accent);
 }
 
 .label {
   box-sizing: border-box;
   width: 100%;
   padding: 6px 8px;
-  border: 1px solid #d0d7e2;
+  border: 1px solid var(--ts-border);
   border-radius: 6px;
+  background: var(--ts-surface);
   font: inherit;
   color: inherit;
   outline: none;
 }
 
 .label:focus {
-  border-color: #3d6aff;
+  border-color: var(--ts-accent);
 }
 
 .actions {
@@ -83,17 +84,17 @@
   min-width: 28px;
   height: 26px;
   padding: 0 8px;
-  border: 1px solid #d0d7e2;
+  border: 1px solid var(--ts-border);
   border-radius: 6px;
-  background: #ffffff;
-  color: #5a6a7e;
+  background: var(--ts-surface);
+  color: var(--ts-text-secondary);
   font: inherit;
   cursor: pointer;
 }
 
 .btn:hover:not(:disabled) {
-  border-color: #b0bfda;
-  color: #1a2332;
+  border-color: var(--ts-border-strong);
+  color: var(--ts-text);
 }
 
 .btn:disabled {
@@ -103,9 +104,9 @@
 
 .btnActive,
 .btnActive:hover:not(:disabled) {
-  background: #1a2332;
-  border-color: #1a2332;
-  color: #ffffff;
+  background: var(--ts-strong);
+  border-color: var(--ts-strong);
+  color: var(--ts-on-strong);
 }
 
 .danger {
@@ -113,6 +114,6 @@
 }
 
 .danger:hover:not(:disabled) {
-  border-color: #f5c2c2;
-  color: #b42318;
+  border-color: var(--ts-danger-border);
+  color: var(--ts-danger);
 }

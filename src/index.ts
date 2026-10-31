@@ -1,2 +1,2 @@
-export { TakeSix, type TakeSixProps } from './TakeSix.js'
+export { TakeSix, type TakeSixProps, type Theme } from './TakeSix.js'
 export type { TakeSixDocument, Block, Link, Layout } from '@takesix/core'

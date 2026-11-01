@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # npm provenance, and trusted publishing later
+      id-token: write # trusted publishing and provenance
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -38,6 +38,5 @@ jobs:
             *) echo "DIST_TAG=latest" >> "$GITHUB_ENV" ;;
           esac
       - run: npm ci
+      # trusted publishing: npm exchanges the OIDC token, no npm token needed
       - run: npm publish --provenance --access public --tag "$DIST_TAG"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

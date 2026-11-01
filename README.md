@@ -123,9 +123,9 @@ In edit mode you can:
 
 ## Development
 
-Node 24 LTS (see `.nvmrc`; with nvm: `nvm use`). Until `@takesix/core` is
-published, it is linked from `../takesix-core`: clone both repositories side
-by side and run `npm run build` in `takesix-core` first.
+Node 24 LTS (see `.nvmrc`; with nvm: `nvm use`). `@takesix/core` comes from
+npm; to try unreleased core changes, run `npm link` in a `takesix-core` checkout
+and `npm link @takesix/core` here.
 
 ```bash
 npm install

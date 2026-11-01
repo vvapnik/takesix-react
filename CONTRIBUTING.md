@@ -5,9 +5,9 @@ and how to write commits.
 
 ## Setup
 
-Use Node 24 LTS (`.nvmrc`; with nvm run `nvm use`). Until `@takesix/core` is
-published, it is linked from `../takesix-core`: clone it next to this
-repository and run `npm run build` there first.
+Use Node 24 LTS (`.nvmrc`; with nvm run `nvm use`). `@takesix/core` comes from
+npm; to work against unreleased core changes, run `npm link` in a
+`takesix-core` checkout and `npm link @takesix/core` here.
 
 ```bash
 npm install

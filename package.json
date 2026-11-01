@@ -23,7 +23,8 @@
     "build": "vite build && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepare": "npm run build"
   },
   "keywords": [
     "diagram",
@@ -46,7 +47,7 @@
     "react-dom": ">=18"
   },
   "dependencies": {
-    "@takesix/core": "file:../takesix-core"
+    "@takesix/core": "^0.2.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",

@@ -56,8 +56,12 @@ history drives versioning and the changelog, so please follow it.
 ### Scopes
 
 `viewer` (navigation, animation), `editor` (edit mode), `arrows`, `layout`,
-`style`, `examples`, `deps`. Leave the scope out when a change touches the
-whole package.
+`style`, `examples`, `deps`, and `release` for version bumps
+(`chore(release): 1.2.0`). Leave the scope out when a change touches the whole
+package.
+
+CI checks every pushed commit with commitlint (`commitlint.config.js`). To
+check yours before pushing: `npx commitlint --from origin/main`.
 
 ### Breaking changes
 

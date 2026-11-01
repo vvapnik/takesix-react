@@ -37,3 +37,27 @@ jobs:
         with:
           name: takesix-react-package
           path: '*.tgz'
+
+  commits:
+    name: Commit messages
+    # not when publish.yml reuses this workflow for a tag
+    if: github.event_name == 'pull_request' || github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Lint commit messages
+        env:
+          BEFORE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ]; then
+            npx commitlint --last --verbose
+          else
+            npx commitlint --from "$BEFORE" --to HEAD --verbose
+          fi

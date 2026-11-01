@@ -50,6 +50,13 @@
 .crumb:disabled { cursor: default; }
 .crumbActive { color: var(--ts-text); }
 
+/* A dragged block would move up to this level */
+.crumbDrop {
+  color: var(--ts-accent);
+  background: var(--ts-accent-soft);
+  box-shadow: 0 0 0 1.5px var(--ts-accent);
+}
+
 /* Full-screen backdrop — click outside the card to zoom out */
 .backdrop {
   position: absolute;
@@ -140,8 +147,10 @@
   line-height: 1.4;
 }
 
-/* Grid container */
+/* Grid container. Also the container for phone-width rules (see .grid and
+   BlockCard's compact cards). */
 .gridArea {
+  container: ts-level / inline-size;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -237,6 +246,12 @@
   row-gap: 16px;
   align-content: space-evenly;
   min-height: 0;
+}
+
+/* Phone width: the six columns keep their structure, with narrow gaps
+   (horizontal arrows then have no room for labels) */
+@container ts-level (max-width: 560px) {
+  .grid { column-gap: 16px; }
 }
 
 /* Edit mode: tools for the current level */

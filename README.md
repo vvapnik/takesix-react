@@ -77,11 +77,16 @@ theme with the `theme` prop, or override variables through `className`:
 
 ### What is shown
 
-- **One level per screen**, with a breadcrumb. There is no header for the
-  opened block: if a level needs a title or summary, make it the first block.
+- **One level per screen**, with a breadcrumb below the top level. The header
+  shows the document's title and description on the top level, and the opened
+  block's below it.
+- **Short screens**: a level taller than the space it has is shrunk to fit
+  (down to 60%), instead of scrolling.
 - **Cards** show icon, title and description, and "N more inside" when the
-  block has children (direct children only). Click anywhere on such a card to
-  open it; text stays selectable.
+  block has children (direct children only). Click anywhere on such a card,
+  text included, to open it; selecting text to copy it does not open it.
+- **Phones**: the level keeps its structure. Blocks of a third or a half show
+  only icon, title and "N more inside"; the gaps between columns narrow.
 
 - **Arrows**: a link between nested blocks is drawn between their ancestors on
   the current screen. Several links between the same pair of blocks merge into
@@ -108,7 +113,9 @@ In edit mode you can:
 - group blocks: "Group blocks" in the toolbar, select two or more, Group. They
   move into a new block ("New group") where the first of them was, which frees
   room on a full level;
-- reorder blocks by dragging the dotted handle on their left;
+- reorder blocks by dragging the dotted handle on their left, or focus the
+  handle and use the arrow keys; drop on the middle of another card to move the
+  block inside it, or on a breadcrumb to move it up to that level;
 - link blocks: press the arrow button on the source, then click the target.
   The target may be on any level: while linking, open blocks ("N more inside")
   or go back up to find it. A block's own ancestors and descendants cannot be

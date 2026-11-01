@@ -8,7 +8,11 @@ export interface CardRect {
 }
 
 /** Where a dragged block would land relative to this card. */
-export type DropPosition = 'before' | 'after'
+/** Arrow keys on the drag handle: earlier or later in the flow. */
+const MOVE_KEYS: Record<string, -1 | 1> = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }
+
+/** Where a dragged block lands: next to this card, or inside it as its last child. */
+export type DropPosition = 'before' | 'inside' | 'after'
 
 /** Grid columns (of 6) each size spans. */
 export const SIZE_SPAN: Record<Size, number> = { S: 2, M: 3, L: 4, F: 6 }
@@ -38,9 +42,13 @@ interface Props {
   /** Drag and drop to reorder, edit mode only. */
   isDragged: boolean
   dropPosition: DropPosition | null
+  /** The dragged block may move into this one (it has room for another child). */
+  canDropInside: boolean
   onDragStartBlock: (id: string) => void
   onDragOverBlock: (id: string, position: DropPosition) => void
   onDragEndBlock: () => void
+  /** Keyboard reordering from the drag handle: one place earlier (-1) or later (1). */
+  onMoveBy: (id: string, delta: -1 | 1) => void
   onShowDetails: (id: string) => void
   /** Choosing blocks to group: a click selects instead of opening. */
   selectable: boolean
@@ -52,7 +60,7 @@ interface Props {
 export function BlockCard({
   block, editing, onRename, onDescribe, onDelete, onAddChild, onDrillIn,
   connectingFrom, canLinkTo, isConnected, onStartConnect, onConnectTarget, onRegisterEl,
-  isDragged, dropPosition, onDragStartBlock, onDragOverBlock, onDragEndBlock, onShowDetails,
+  isDragged, dropPosition, canDropInside, onDragStartBlock, onDragOverBlock, onDragEndBlock, onMoveBy, onShowDetails,
   selectable, selected, onToggleSelect, onResize,
 }: Props) {
   // While the right edge is being dragged: the size under the pointer
@@ -94,11 +102,13 @@ export function BlockCard({
     return { left: r.left, top: r.top, width: r.width, height: r.height }
   }
 
-  // A click anywhere on a card with children opens it, except on text (so it
-  // can be selected or edited) and on the card's own buttons.
+  // A click anywhere on a card with children opens it, text included, except
+  // on its handles and, while editing, on the text being edited. A finished
+  // text selection does not open it, so text can still be copied.
   function handleCardClick(e: React.MouseEvent) {
     if (!hasChildren || !cardEl.current) return
-    if ((e.target as HTMLElement).closest('[data-text], [data-drag-handle], [data-resize-handle]')) return
+    const keep = editing ? '[data-text], [data-drag-handle], [data-resize-handle]' : '[data-drag-handle], [data-resize-handle]'
+    if ((e.target as HTMLElement).closest(keep)) return
     const selection = window.getSelection()
     if (selection && !selection.isCollapsed && cardEl.current.contains(selection.anchorNode)) return
     onDrillIn(block, getCardRect())
@@ -136,8 +146,9 @@ export function BlockCard({
       onDragOver={e => {
         if (!editing) return
         const r = e.currentTarget.getBoundingClientRect()
-        const middle = axis === 'y' ? r.top + r.height / 2 : r.left + r.width / 2
-        onDragOverBlock(block.id, (axis === 'y' ? e.clientY : e.clientX) < middle ? 'before' : 'after')
+        // Along the flow: the outer quarters drop next to the card, the middle into it
+        const t = axis === 'y' ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width
+        onDragOverBlock(block.id, canDropInside && t > 0.25 && t < 0.75 ? 'inside' : t < 0.5 ? 'before' : 'after')
       }}
       onDragEnd={() => { setArmed(false); onDragEndBlock() }}
     >
@@ -176,9 +187,18 @@ export function BlockCard({
         <div
           className={styles.dragHandle}
           data-drag-handle
-          title="Drag to reorder"
-          aria-hidden="true"
+          role="button"
+          tabIndex={0}
+          aria-label={`Move ${block.title}`}
+          aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
+          title="Drag to reorder, or focus and use the arrow keys"
           onPointerDown={() => setArmed(true)}
+          onKeyDown={e => {
+            const delta = MOVE_KEYS[e.key]
+            if (!delta) return
+            e.preventDefault()
+            onMoveBy(block.id, delta)
+          }}
         />
       )}
 

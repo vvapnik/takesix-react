@@ -136,16 +136,18 @@ describe('TakeSix (read-only)', () => {
     expect(crumbs()).toEqual([])
   })
 
-  it('opens a block on a click anywhere on its card, but not on its text', async () => {
+  it('opens a block on a click anywhere on its card, its text included', async () => {
     const user = userEvent.setup()
-    const { container } = render(<TakeSix document={sampleDoc()} />)
-    const card = () => container.querySelector('[data-block-id="api"]') as HTMLElement
+    render(<TakeSix document={sampleDoc()} />)
 
     await user.click(screen.getByRole('heading', { name: 'API' }))
-    expect(crumbs()).toEqual([])
-
-    await user.click(card())
     expect(crumbs()).toEqual(['Shop', 'API'])
+  })
+
+  it('edits rather than opens when the text is clicked in edit mode', async () => {
+    const { user } = renderEditable()
+    await user.click(screen.getByRole('heading', { name: 'API' }))
+    expect(crumbs()).toEqual([])
   })
 
   it('does not open a block while text in it is selected', () => {
@@ -246,6 +248,63 @@ describe('TakeSix (editing)', () => {
 
     expect(latest.doc.blocks.map(b => b.id)).toEqual(['db', 'web', 'api'])
     expect(card('web')).not.toHaveAttribute('data-drop')
+  })
+
+  it('moves a block into another one dropped on its middle', () => {
+    const { latest } = renderEditable()
+    const card = (id: string) => document.querySelector(`[data-block-id="${id}"]`) as HTMLElement
+    const dataTransfer = { setData: () => {}, effectAllowed: '' }
+
+    const db = card('db')
+    fireEvent.pointerDown(db.querySelector('[data-drag-handle]')!)
+    fireEvent.dragStart(db, { dataTransfer })
+    // jsdom has no layout: give the target a box and point at its middle
+    card('api').getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 200, height: 100 })
+    const over = createEvent.dragOver(card('api'), { dataTransfer })
+    Object.defineProperty(over, 'clientX', { value: 100 })
+    Object.defineProperty(over, 'clientY', { value: 50 })
+    fireEvent(card('api'), over)
+    expect(card('api')).toHaveAttribute('data-drop', 'inside')
+    fireEvent.drop(card('api'), { dataTransfer })
+    fireEvent.dragEnd(db, { dataTransfer })
+
+    expect(latest.doc.blocks.map(b => b.id)).toEqual(['web', 'api'])
+    expect(getLevel(latest.doc, 'api').map(b => b.id)).toEqual(['auth', 'orders', 'db'])
+  })
+
+  it('moves a block up a level when dropped on a breadcrumb', async () => {
+    const { latest, user } = renderEditable()
+    await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
+    expect(crumbs()).toEqual(['Shop', 'API'])
+    const card = (id: string) => document.querySelector(`[data-block-id="${id}"]`) as HTMLElement
+    const dataTransfer = { setData: () => {}, effectAllowed: '' }
+
+    fireEvent.pointerDown(card('auth').querySelector('[data-drag-handle]')!)
+    fireEvent.dragStart(card('auth'), { dataTransfer })
+    const shop = screen.getByRole('button', { name: 'Shop' })
+    fireEvent.dragOver(shop, { dataTransfer })
+    fireEvent.drop(shop, { dataTransfer })
+
+    expect(latest.doc.blocks.map(b => b.id)).toEqual(['web', 'api', 'db', 'auth'])
+    expect(getLevel(latest.doc, 'api').map(b => b.id)).toEqual(['orders'])
+  })
+
+  it('reorders blocks with the arrow keys on the drag handle', async () => {
+    const { latest, user } = renderEditable()
+    const handle = screen.getByRole('button', { name: 'Move Database' })
+
+    handle.focus()
+    await user.keyboard('{ArrowUp}')
+    expect(latest.doc.blocks.map(b => b.id)).toEqual(['web', 'db', 'api'])
+    // focus stays on the moved block, so it can keep going
+    expect(screen.getByRole('button', { name: 'Move Database' })).toHaveFocus()
+    await user.keyboard('{ArrowLeft}')
+    expect(latest.doc.blocks.map(b => b.id)).toEqual(['db', 'web', 'api'])
+    // already first: nothing happens
+    await user.keyboard('{ArrowUp}')
+    expect(latest.doc.blocks.map(b => b.id)).toEqual(['db', 'web', 'api'])
+    await user.keyboard('{ArrowDown}')
+    expect(latest.doc.blocks.map(b => b.id)).toEqual(['web', 'db', 'api'])
   })
 
   it('does not open a block from its drag handle', async () => {

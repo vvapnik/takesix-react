@@ -280,6 +280,11 @@
   cursor: grabbing;
 }
 
+.dragHandle:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: -2px;
+}
+
 .cardDragged {
   opacity: 0.4;
 }
@@ -289,15 +294,11 @@
 .card[data-drop='after'][data-axis='y'] { box-shadow: 0 4px 0 -1px var(--ts-accent); }
 .card[data-drop='before'][data-axis='x'] { box-shadow: -4px 0 0 -1px var(--ts-accent); }
 .card[data-drop='after'][data-axis='x'] { box-shadow: 4px 0 0 -1px var(--ts-accent); }
+/* Into the card: it becomes the block's new parent */
+.card[data-drop='inside'] { box-shadow: 0 0 0 2px var(--ts-accent); background: var(--ts-accent-soft); }
 
 .cardZoomable {
   cursor: zoom-in;
-}
-
-/* Text stays selectable: text cursor, and clicks on it do not zoom */
-.title,
-.description {
-  cursor: text;
 }
 
 .card:hover {
@@ -397,6 +398,26 @@
 
 .cardZoomable:hover .inside {
   color: var(--ts-accent);
+}
+
+/* Phone width: blocks of a third or a half show icon, title and "N more
+   inside", no description; the icon goes above the title to leave it room */
+@container ts-level (max-width: 560px) {
+  .card:is([data-size='S'], [data-size='M']):not(.cardEditing) .description { display: none; }
+  .card:is([data-size='S'], [data-size='M']) .header {
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 12px 8px;
+  }
+  .card:is([data-size='S'], [data-size='M']) .title {
+    font-size: 0.9rem;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .card:is([data-size='S'], [data-size='M']) .inside {
+    padding: 0 12px 12px;
+    white-space: normal;
+  }
 }
 
 .inside:focus-visible {

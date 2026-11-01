@@ -12,6 +12,7 @@ import {
 } from '@takesix/core'
 import { BlockCard, type CardRect, type DropPosition } from './BlockCard.js'
 import { HEAD_LENGTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
+import { fitZoom } from './fit.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
 import { DetailsPanel } from './DetailsPanel.js'
 import { DetailsIcon, PlusIcon } from './icons.js'
@@ -78,6 +79,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   const isAnimating = useRef(false)
   const cardElsMap = useRef(new Map<string, HTMLDivElement>())
   const gridAreaRef = useRef<HTMLDivElement>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
   const markerId = useId()
 
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
@@ -91,12 +93,16 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   const [detailsId, setDetailsId] = useState<string | null>(null)
   const closeDetails = useCallback(() => setDetailsId(null), [])
   const [drop, setDrop] = useState<{ id: string; position: DropPosition } | null>(null)
+  // Breadcrumb a dragged block would move up to
+  const [dropCrumb, setDropCrumb] = useState<number | null>(null)
   const [arrowPaths, setArrowPaths] = useState<ArrowPath[]>([])
   const [path, setPath] = useState<PathEntry[]>([])
   const [layoutKey, setLayoutKey] = useState(0)
   const [sizeTick, setSizeTick] = useState(0)
   // Bumped when the zoom animation ends, so arrows are measured on settled cards.
   const [settleTick, setSettleTick] = useState(0)
+  // Below 1 when the level is taller than the screen (see fitZoom)
+  const [zoom, setZoom] = useState(1)
 
   const index = useMemo(() => buildIndex(doc), [doc])
   // Gone when the block is deleted: the panel closes by itself
@@ -235,6 +241,27 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     compute()
   }, [blocks, links, layoutKey, editing, sizeTick, settleTick])
 
+  // Shrink the level to fit a short screen. CSS zoom re-lays it out, so card
+  // rects, arrows and the zoom animation all see the shrunk cards.
+  // fitZoom only shrinks; with new space or new blocks it starts again from 1.
+  const fitFor = useRef('')
+  useLayoutEffect(() => {
+    const grid = gridRef.current
+    const slide = slideRef.current
+    if (!grid || (slide && (slide.style.transform !== '' || slide.style.transition !== ''))) return
+    // The grid's own box comes from the layout around it, not from the zoom
+    const box = grid.getBoundingClientRect()
+    const key = `${Math.round(box.width)}x${Math.round(box.height)}|${blocks.map(b => b.id).join()}|${editing}`
+    if (key !== fitFor.current) {
+      fitFor.current = key
+      if (zoom !== 1) { setZoom(1); return }
+    }
+    const items = [...grid.children].map(el => toRect(el.getBoundingClientRect()))
+    const rowGap = parseFloat(getComputedStyle(grid).rowGap) || 0
+    const next = fitZoom(box.height, items, rowGap, zoom)
+    if (next !== zoom) setZoom(next)
+  }, [blocks, editing, sizeTick, settleTick, layoutKey, zoom])
+
   // Re-route arrows when the viewer or any card changes size
   const resizeObserver = useRef<ResizeObserver | null>(null)
   useEffect(() => {
@@ -326,18 +353,58 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   function endDrag() {
     setDragId(null)
     setDrop(null)
+    setDropCrumb(null)
   }
 
   // Drop on the current indicator. Works over the gaps too, since the
   // indicator stays on the last card the pointer was over.
   function commitDrop() {
-    if (dragId && drop && drop.id !== dragId) {
+    if (dragId && drop?.position === 'inside' && drop.id !== dragId) {
+      actions.move(dragId, drop.id, index.get(drop.id)?.block.children?.length ?? 0)
+    } else if (dragId && drop && drop.id !== dragId) {
       const rest = blocks.map(b => b.id).filter(id => id !== dragId)
       const at = rest.indexOf(drop.id) + (drop.position === 'after' ? 1 : 0)
       if (at !== blocks.findIndex(b => b.id === dragId)) actions.move(dragId, parentId, at)
     }
     endDrag()
   }
+
+  // Level shown by breadcrumb i: the top level, then the opened blocks
+  const crumbLevel = (i: number): string | null => (i === 0 ? null : livePath[i - 1]!.id)
+  const levelHasRoom = (id: string | null) => getLevel(doc, id, index).length < MAX_BLOCKS_PER_LEVEL
+
+  // A breadcrumb takes a dragged block up to that level, at its end
+  const crumbDrop = (i: number) => editing && i < livePath.length ? {
+    onDragOver: (e: React.DragEvent) => {
+      if (!dragId || !levelHasRoom(crumbLevel(i))) return
+      e.preventDefault()
+      setDrop(null)
+      if (dropCrumb !== i) setDropCrumb(i)
+    },
+    onDragLeave: () => setDropCrumb(null),
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault()
+      const level = crumbLevel(i)
+      if (dragId) actions.move(dragId, level, getLevel(doc, level, index).length)
+      endDrag()
+    },
+  } : {}
+
+  // Keyboard reordering keeps the focus on the moved block's handle
+  const focusAfterMove = useRef<string | null>(null)
+  function moveBy(id: string, delta: -1 | 1) {
+    const from = blocks.findIndex(b => b.id === id)
+    const to = from + delta
+    if (from === -1 || to < 0 || to >= blocks.length) return
+    focusAfterMove.current = id
+    actions.move(id, parentId, to)
+  }
+  useEffect(() => {
+    const id = focusAfterMove.current
+    if (!id) return
+    focusAfterMove.current = null
+    gridRef.current?.querySelector<HTMLElement>(`[data-block-id="${CSS.escape(id)}"] [data-drag-handle]`)?.focus()
+  }, [blocks])
 
   const dropZone = editing ? {
     onDragOver: (e: React.DragEvent) => { if (dragId) e.preventDefault() },
@@ -370,12 +437,14 @@ export function Viewer({ document: doc, editing, actions }: Props) {
       onRegisterEl={registerCard}
       isDragged={dragId === block.id}
       dropPosition={dragId && drop?.id === block.id && drop.id !== dragId ? drop.position : null}
+      canDropInside={!!dragId && dragId !== block.id && (block.children?.length ?? 0) < MAX_BLOCKS_PER_LEVEL}
       onDragStartBlock={setDragId}
       onDragOverBlock={(id, position) => {
         if (!dragId) return
         if (drop?.id !== id || drop.position !== position) setDrop({ id, position })
       }}
       onDragEndBlock={endDrag}
+      onMoveBy={moveBy}
       onShowDetails={setDetailsId}
       selectable={grouping !== null}
       selected={grouping?.includes(block.id) ?? false}
@@ -410,10 +479,11 @@ export function Viewer({ document: doc, editing, actions }: Props) {
           <span key={i} className={styles.crumbItem}>
             {i > 0 && <span className={styles.crumbSep}>/</span>}
             <button
-              className={`${styles.crumb} ${i === crumbs.length - 1 ? styles.crumbActive : ''}`}
+              className={`${styles.crumb} ${i === crumbs.length - 1 ? styles.crumbActive : ''} ${dropCrumb === i ? styles.crumbDrop : ''}`}
               onClick={() => goBack(i)}
               disabled={i === crumbs.length - 1}
               aria-current={i === crumbs.length - 1 ? 'location' : undefined}
+              {...crumbDrop(i)}
             >
               {crumb.label}
             </button>
@@ -504,7 +574,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
           )}
 
           {/* One flow for every level: blocks take 2, 3, 4 or 6 of 6 columns by size */}
-          <div className={styles.grid} {...dropZone}>
+          <div ref={gridRef} className={styles.grid} style={zoom < 1 ? { zoom } : undefined} {...dropZone}>
             {blocks.map(block => renderCard(block))}
             {canAdd && addButton()}
           </div>

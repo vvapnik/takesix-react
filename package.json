@@ -1,6 +1,6 @@
 {
   "name": "@takesix/react",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "React viewer and editor for takesix diagrams: at most 6 blocks per screen, drill into any of them",
   "type": "module",
   "main": "./dist/index.js",

@@ -254,11 +254,18 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
     requestAnimationFrame(() => {
       slide.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)'
       slide.style.transform = ''
-      slide.addEventListener('transitionend', () => {
+      // Only the slide's own zoom ends the animation: transitions of the cards
+      // inside (hover under the cursor) bubble up here too, and settling on
+      // one of them would stop the zoom midway and route the arrows from
+      // the still shrunk cards.
+      const onEnd = (e: TransitionEvent) => {
+        if (e.target !== slide || e.propertyName !== 'transform') return
+        slide.removeEventListener('transitionend', onEnd)
         slide.style.transition = ''
         slide.style.transformOrigin = ''
         setSettleTick(t => t + 1)
-      }, { once: true })
+      }
+      slide.addEventListener('transitionend', onEnd)
     })
   }, [layoutKey])
 

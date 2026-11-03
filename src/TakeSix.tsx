@@ -1,16 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import {
   addBlock,
   addLink,
   canAddBlock,
-  DEFAULT_SIZE,
   groupBlocks,
   moveBlock,
   removeBlock,
+  TakeSixError,
   updateBlock,
   type Link,
   type TakeSixDocument,
 } from '@takesix/core'
+import { useTypographyReady } from './ready.js'
 import { Viewer, type ViewerActions } from './Viewer.js'
 import styles from './TakeSix.module.css'
 
@@ -39,6 +40,14 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
 
   const actions = useMemo<ViewerActions>(() => {
     const commit = (next: TakeSixDocument) => { if (next !== doc) onChange?.(next) }
+    // Placing on the grid can fail (taken place, no room left): then nothing changes
+    const attempt = (edit: () => TakeSixDocument) => {
+      try {
+        commit(edit())
+      } catch (e) {
+        if (!(e instanceof TakeSixError)) throw e
+      }
+    }
     return {
       rename(id, title) {
         const trimmed = title.trim()
@@ -48,21 +57,30 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
       describe(id, description) {
         commit(updateBlock(doc, id, { description: description.trim() || undefined }))
       },
+      renameDocument(title) {
+        const trimmed = title.trim()
+        if (trimmed && trimmed !== doc.title) commit({ ...doc, title: trimmed })
+      },
+      describeDocument(description) {
+        const trimmed = description.trim()
+        if (trimmed === (doc.description ?? '')) return
+        const { description: _, ...rest } = doc
+        commit(trimmed ? { ...doc, description: trimmed } : rest)
+      },
       remove(id) {
         commit(removeBlock(doc, id))
       },
-      add(parentId) {
-        if (canAddBlock(doc, parentId)) commit(addBlock(doc, parentId, NEW_BLOCK).document)
+      add(parentId, at) {
+        if (canAddBlock(doc, parentId)) attempt(() => addBlock(doc, parentId, at ? { ...NEW_BLOCK, at } : NEW_BLOCK).document)
       },
-      setSize(id, size) {
-        // The default size is not written to the file
-        commit(updateBlock(doc, id, { size: size === DEFAULT_SIZE ? undefined : size }))
+      place(id, at) {
+        attempt(() => updateBlock(doc, id, { at }))
       },
-      move(id, parentId, index) {
-        commit(moveBlock(doc, id, parentId, { index }))
+      move(id, parentId, at) {
+        attempt(() => moveBlock(doc, id, parentId, at ? { at } : {}))
       },
       group(ids) {
-        commit(groupBlocks(doc, ids, { title: 'New group', description: `${ids.length} blocks` }).document)
+        attempt(() => groupBlocks(doc, ids, { title: 'New group', description: `${ids.length} blocks` }).document)
       },
       setDetails(id, details) {
         commit(updateBlock(doc, id, { details: details.trim() ? details : undefined }))
@@ -94,9 +112,18 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
     }
   }, [doc, onChange])
 
+  const rootRef = useRef<HTMLDivElement>(null)
+  const typography = useTypographyReady(rootRef)
+
   return (
-    <div className={`${styles.takeSix} ${className ?? ''}`} data-theme={theme}>
-      <Viewer document={doc} editing={editing} actions={actions} />
+    <div
+      ref={rootRef}
+      className={`${styles.takeSix} ${className ?? ''}`}
+      data-theme={theme}
+      // Laid out but not shown until styles and fonts are in (see useTypographyReady)
+      style={typography.ready ? undefined : { visibility: 'hidden' }}
+    >
+      <Viewer document={doc} editing={editing} actions={actions} typographyTick={typography.ready ? typography.tick + 1 : 0} />
     </div>
   )
 }

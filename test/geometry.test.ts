@@ -9,8 +9,18 @@ const container = rect(0, 0, 1000, 1000)
 
 describe('determineEdges', () => {
   it('connects side by side cards through facing edges', () => {
-    expect(determineEdges(rect(0, 0), rect(200, 0), [])).toEqual({ exitEdge: 'right', entryEdge: 'left' })
-    expect(determineEdges(rect(200, 0), rect(0, 0), [])).toEqual({ exitEdge: 'left', entryEdge: 'right' })
+    expect(determineEdges(rect(0, 0), rect(200, 0), [])).toEqual({ exitEdge: 'right', entryEdge: 'left', anchor: 30 })
+    expect(determineEdges(rect(200, 0), rect(0, 0), [])).toEqual({ exitEdge: 'left', entryEdge: 'right', anchor: 30 })
+  })
+
+  it('runs straight across the rows a tall card shares with a short one', () => {
+    // tall card spans two rows (0–140), the short one sits in the second (80–140)
+    expect(determineEdges(rect(200, 80), rect(0, 0, 100, 140), [])).toEqual({ exitEdge: 'left', entryEdge: 'right', anchor: 110 })
+  })
+
+  it('runs straight down through the columns two cards share', () => {
+    // a wide card above a narrower one on its right half
+    expect(determineEdges(rect(0, 0, 400), rect(300, 200, 200), [])).toEqual({ exitEdge: 'bottom', entryEdge: 'top', anchor: 350 })
   })
 
   it('goes around a card standing in between', () => {
@@ -18,8 +28,11 @@ describe('determineEdges', () => {
   })
 
   it('connects stacked cards through top and bottom', () => {
-    expect(determineEdges(rect(0, 0), rect(0, 200), [])).toEqual({ exitEdge: 'bottom', entryEdge: 'top' })
-    expect(determineEdges(rect(0, 200), rect(0, 0), [])).toEqual({ exitEdge: 'top', entryEdge: 'bottom' })
+    expect(determineEdges(rect(0, 0), rect(0, 200), [])).toEqual({ exitEdge: 'bottom', entryEdge: 'top', anchor: 50 })
+    expect(determineEdges(rect(0, 200), rect(0, 0), [])).toEqual({ exitEdge: 'top', entryEdge: 'bottom', anchor: 50 })
+    // neither rows nor columns shared: side to side, like a branch of a tree
+    expect(determineEdges(rect(0, 200), rect(300, 0), [])).toEqual({ exitEdge: 'right', entryEdge: 'left' })
+    expect(determineEdges(rect(300, 0), rect(0, 200), [])).toEqual({ exitEdge: 'left', entryEdge: 'right' })
   })
 })
 

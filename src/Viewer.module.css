@@ -95,24 +95,34 @@
   flex-shrink: 0;
 }
 
-.headerDetailsBtn {
-  all: unset;
+.headerActions {
   margin-left: auto;
   align-self: center;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border: 1px solid var(--ts-border);
-  border-radius: 999px;
-  font-size: 0.75rem;
-  color: var(--ts-text-secondary);
-  cursor: pointer;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.headerDetailsBtn:hover {
-  border-color: var(--ts-accent);
+.headerDetailsLink {
+  all: unset;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ts-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.headerDetailsLink:hover {
   color: var(--ts-accent);
+}
+
+.headerDetailsLink:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /* Top level: no card around it, so no inner padding */
@@ -130,6 +140,8 @@
 .slideHeaderText {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .slideTitle {
@@ -145,6 +157,35 @@
   font-size: 0.8rem;
   color: var(--ts-text-muted);
   line-height: 1.4;
+}
+
+/* Room for the edit-mode underline in view mode too, so the text does not
+   move when editing starts */
+.slideTitle,
+.slideDescription {
+  border-bottom: 1.5px solid transparent;
+  padding-bottom: 1px;
+}
+
+/* Edit mode: title and description of the header, edited in place
+   (same look as on the cards) */
+.editable {
+  border-bottom: 1.5px dashed var(--ts-border-strong);
+  border-radius: 2px;
+  cursor: text;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  padding-bottom: 1px;
+}
+
+.editable:empty::before {
+  content: attr(data-placeholder);
+  color: var(--ts-icon);
+}
+
+.editable:focus {
+  border-bottom-color: var(--ts-accent);
+  background: rgba(61, 106, 255, 0.05);
 }
 
 /* Grid container. Also the container for phone-width rules (see .grid and
@@ -207,6 +248,16 @@
   fill: var(--ts-accent);
 }
 
+/* Editing: an arrow that runs through a block or crosses another */
+.arrowWarn {
+  stroke: var(--ts-warning);
+  stroke-opacity: 1;
+}
+
+.arrowHeadWarn {
+  fill: var(--ts-warning);
+}
+
 .arrowLabel {
   font-size: 11px;
   font-weight: 500;
@@ -232,33 +283,92 @@
   padding: 8px;
 }
 
-/* One flow of blocks for every level: 6 columns, each block spans 2, 3, 4
-   or 6 of them by its size (see BlockCard [data-size]). Rows keep the height
-   of their content; spare height goes between them. */
+/* The level's 6×6 grid: six equal rows filling the screen, the same in view
+   and edit mode. Tracks come from the Viewer; empty columns use the variable
+   below. A card with more text than its cells hold makes the level zoom out
+   (see fitZoom). */
 .grid {
+  --ts-empty-col: minmax(0, 1fr);
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  grid-auto-rows: max-content;
-  /* room for a horizontal arrow and its label between blocks */
-  column-gap: 56px;
-  /* room for an arrow and its label between rows */
-  row-gap: 16px;
+  grid-template-rows: var(--ts-rows-full);
+  /* room for a short arrow between neighbours; empty cells make more room */
+  column-gap: 28px;
+  /* room for a short arrow between rows */
+  row-gap: 8px;
   align-content: space-evenly;
   min-height: 0;
 }
 
-/* Phone width: the six columns keep their structure, with narrow gaps
-   (horizontal arrows then have no room for labels) */
-@container ts-level (max-width: 560px) {
-  .grid { column-gap: 16px; }
+/* Cards stay within their cells; the fit zoom deals with what does not fit */
+.grid > * {
+  min-height: 0;
 }
 
-/* Edit mode: tools for the current level */
+/* Phone width, viewing: the six columns keep their structure, with narrow
+   gaps (horizontal arrows then have no room for labels); only the rows in use,
+   as tall as their content, and empty columns and rows shrink away */
+@container ts-level (max-width: 560px) {
+  .grid {
+    column-gap: 8px;
+  }
+  .grid:not(.gridEditing) {
+    --ts-empty-col: 0px;
+    grid-template-rows: var(--ts-rows-compact);
+  }
+  .grid:not(.gridEditing) > * {
+    min-height: auto;
+  }
+}
+
+/* Edit mode: the cells of the grid, behind the cards */
+.cell {
+  border: 1px dashed var(--ts-divider);
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+}
+
+/* Edit mode: a card with more text than its cells hold is cut off */
+.gridEditing {
+  align-content: stretch;
+}
+
+.cellFree {
+  cursor: pointer;
+  color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.cellFree:hover {
+  border-color: var(--ts-accent);
+  color: var(--ts-accent);
+  background: var(--ts-accent-soft);
+}
+
+/* Where a dragged block would land; red when the place is taken */
+.dropArea {
+  border: 2px solid var(--ts-accent);
+  border-radius: 10px;
+  background: var(--ts-accent-soft);
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.8;
+}
+
+.dropAreaBad {
+  border-color: var(--ts-danger);
+  background: var(--ts-danger-soft);
+}
+
+/* Edit mode: tools for the current level, in the header */
 .levelTools {
   display: flex;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
 }
 
 .groupBtn {
@@ -285,31 +395,20 @@
   color: var(--ts-on-strong);
 }
 
+.layoutHint {
+  align-self: center;
+  font-size: 0.72rem;
+  color: var(--ts-warning);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+  white-space: nowrap;
+}
+
 .fullHint {
   align-self: center;
   font-size: 0.72rem;
   color: var(--ts-text-faint);
-}
-
-/* Add block: a small (S) tile at the end of the flow */
-.addBlock {
-  grid-column: span 2;
-  border: 1.5px dashed var(--ts-border-dashed);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--ts-border-strong);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-  min-height: 80px;
-}
-
-.addBlock:hover {
-  border-color: var(--ts-accent);
-  color: var(--ts-accent);
-  background: var(--ts-accent-soft);
 }
 
 /* While linking: what is going on and how to stop, floating at the bottom */

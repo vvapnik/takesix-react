@@ -6,8 +6,12 @@ import { sample } from './sample'
 import logoSvg from './takesix-logo.svg?raw'
 import styles from './App.module.css'
 
+// ?src=<url> opens a document from that URL instead of the sample.
+const src = new URLSearchParams(window.location.search).get('src')
+
 export function App() {
-  const [doc, setDoc] = useState<TakeSixDocument>(sample)
+  // With ?src nothing is shown until it loads, so the sample does not flash first
+  const [doc, setDoc] = useState<TakeSixDocument | null>(src ? null : sample)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [theme, setTheme] = useState<Theme>('auto')
@@ -30,9 +34,7 @@ export function App() {
     }
   }
 
-  // ?src=<url> opens a document from that URL instead of the sample.
   useEffect(() => {
-    const src = new URLSearchParams(window.location.search).get('src')
     if (!src) return
     fetch(src)
       .then(r => (r.ok ? r.text() : Promise.reject(new Error(`${r.status} ${r.statusText}`))))
@@ -40,6 +42,7 @@ export function App() {
   }, [])
 
   function handleExport() {
+    if (!doc) return
     const blob = new Blob([serializeDocument(doc)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -100,7 +103,7 @@ export function App() {
       )}
 
       <main className={styles.main}>
-        <TakeSix key={version} document={doc} onChange={setDoc} editing={editing} theme={theme} />
+        {doc && <TakeSix key={version} document={doc} onChange={setDoc} editing={editing} theme={theme} />}
       </main>
     </div>
   )

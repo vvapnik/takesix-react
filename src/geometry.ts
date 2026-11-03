@@ -72,42 +72,66 @@ function slotPos(idx: number, total: number, edgeLen: number): number {
   return (idx - (total - 1) / 2) * spacing
 }
 
-export function determineEdges(
-  fromRect: Rect,
-  toRect: Rect,
-  obstacleRects: Rect[],
-): { exitEdge: Edge; entryEdge: Edge } {
-  const fromCX = (fromRect.left + fromRect.right) / 2
-  const fromCY = (fromRect.top + fromRect.bottom) / 2
-  const toCX = (toRect.left + toRect.right) / 2
-  const toCY = (toRect.top + toRect.bottom) / 2
-  const dx = toCX - fromCX
-  const dy = toCY - fromCY
+/** How an arrow leaves one card and enters the other. */
+export interface Edges {
+  exitEdge: Edge
+  entryEdge: Edge
+  /**
+   * Where along the edges the arrow attaches (x for top/bottom, y for
+   * left/right), shared by both ends so the arrow runs straight. Absent:
+   * the middle of each edge.
+   */
+  anchor?: number
+}
 
-  const sameRow = Math.abs(dy) < Math.min(fromRect.height, toRect.height) * 0.5
-  if (sameRow) {
-    const goRight = dx >= 0
-    const blocked = obstacleRects.some(r => {
-      const rCX = (r.left + r.right) / 2
-      const inX = goRight
-        ? rCX > fromRect.right - 4 && rCX < toRect.left + 4
-        : rCX < fromRect.left + 4 && rCX > toRect.right - 4
-      const inY = Math.abs((r.top + r.bottom) / 2 - fromCY) < (fromRect.height + r.height) * 0.4
-      return inX && inY
-    })
+/** Length of the part two ranges share, and its middle. */
+function shared(a1: number, a2: number, b1: number, b2: number): { length: number; middle: number } {
+  const start = Math.max(a1, b1)
+  const end = Math.min(a2, b2)
+  return { length: end - start, middle: (start + end) / 2 }
+}
+
+/**
+ * Cards that share part of their height (side by side, or a tall card next to
+ * a short one) connect straight across the shared part; cards that share part
+ * of their width, straight up or down. Otherwise the arrow bends from the
+ * side of one card to the facing side of the other.
+ */
+export function determineEdges(fromRect: Rect, toRect: Rect, obstacleRects: Rect[]): Edges {
+  const fromCX = (fromRect.left + fromRect.right) / 2
+  const toCX = (toRect.left + toRect.right) / 2
+  const fromCY = (fromRect.top + fromRect.bottom) / 2
+  const toCY = (toRect.top + toRect.bottom) / 2
+
+  const rows = shared(fromRect.top, fromRect.bottom, toRect.top, toRect.bottom)
+  if (rows.length >= Math.min(fromRect.height, toRect.height) * 0.5) {
+    const goRight = toCX >= fromCX
+    const left = goRight ? fromRect.right : toRect.right
+    const right = goRight ? toRect.left : fromRect.left
+    // A card standing in the way of the straight line: arc below instead
+    const blocked = obstacleRects.some(r =>
+      r.left < right - 4 && r.right > left + 4 && r.top < rows.middle && r.bottom > rows.middle)
     if (!blocked) {
-      return { exitEdge: goRight ? 'right' : 'left', entryEdge: goRight ? 'left' : 'right' }
+      return { exitEdge: goRight ? 'right' : 'left', entryEdge: goRight ? 'left' : 'right', anchor: rows.middle }
     }
     return { exitEdge: 'bottom', entryEdge: 'bottom' }
   }
 
-  const goDown = dy > 0
-  return { exitEdge: goDown ? 'bottom' : 'top', entryEdge: goDown ? 'top' : 'bottom' }
+  const cols = shared(fromRect.left, fromRect.right, toRect.left, toRect.right)
+  if (cols.length <= 0) {
+    // Diagonal neighbours (a branch of a tree): side to side, so the diagram
+    // reads left to right
+    const goRight = toCX >= fromCX
+    return { exitEdge: goRight ? 'right' : 'left', entryEdge: goRight ? 'left' : 'right' }
+  }
+  const goDown = toCY > fromCY
+  return { exitEdge: goDown ? 'bottom' : 'top', entryEdge: goDown ? 'top' : 'bottom', anchor: cols.middle }
 }
 
-export function edgePoint(rect: Rect, edge: Edge, idx: number, total: number, origin: Point): Point {
-  const cx = (rect.left + rect.right) / 2
-  const cy = (rect.top + rect.bottom) / 2
+/** A point on a card edge: at `anchor` (or the edge's middle), moved by its slot. */
+export function edgePoint(rect: Rect, edge: Edge, idx: number, total: number, origin: Point, anchor?: number): Point {
+  const cx = anchor ?? (rect.left + rect.right) / 2
+  const cy = anchor ?? (rect.top + rect.bottom) / 2
   switch (edge) {
     case 'right':  return { x: rect.right - origin.x, y: cy - origin.y + slotPos(idx, total, rect.height) }
     case 'left':   return { x: rect.left - origin.x,  y: cy - origin.y + slotPos(idx, total, rect.height) }
@@ -161,11 +185,9 @@ export function bezierMid(p0: Point, c1: Point, c2: Point, p3: Point): Point {
 export function routeArrows(requests: ArrowRequest[], rects: Map<string, Rect>, container: Rect): ArrowPath[] {
   const origin = { x: container.left, y: container.top }
 
-  interface Conn extends ArrowRequest {
+  interface Conn extends ArrowRequest, Edges {
     fromRect: Rect
     toRect: Rect
-    exitEdge: Edge
-    entryEdge: Edge
   }
   const conns: Conn[] = []
   for (const request of requests) {
@@ -194,8 +216,8 @@ export function routeArrows(requests: ArrowRequest[], rects: Map<string, Rect>, 
     const entryPool = pools.get(`${c.toId}-${c.entryEdge}`)!
     const exitIdx = exitPool.findIndex(s => s.ci === ci && s.role === 'exit')
     const entryIdx = entryPool.findIndex(s => s.ci === ci && s.role === 'entry')
-    const e1 = edgePoint(c.fromRect, c.exitEdge, exitIdx, exitPool.length, origin)
-    const e2 = edgePoint(c.toRect, c.entryEdge, entryIdx, entryPool.length, origin)
+    const e1 = edgePoint(c.fromRect, c.exitEdge, exitIdx, exitPool.length, origin, c.anchor)
+    const e2 = edgePoint(c.toRect, c.entryEdge, entryIdx, entryPool.length, origin, c.anchor)
     let startOffset = c.headAtStart ? HEAD_GAP + HEAD_LENGTH : 0
     let endOffset = c.headAtEnd ? HEAD_GAP + HEAD_LENGTH : 0
     // Facing edges with a narrow gap between them (tight list rows): shrink the

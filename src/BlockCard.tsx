@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { DEFAULT_SIZE, SIZES, type Block, type Size } from '@takesix/core'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { formatArea, type Area, type Block } from '@takesix/core'
 import { ArrowRightIcon, CrossIcon, DetailsIcon, PlusIcon } from './icons.js'
 import styles from './BlockCard.module.css'
 
@@ -7,25 +7,25 @@ export interface CardRect {
   left: number; top: number; width: number; height: number
 }
 
-/** Where a dragged block would land relative to this card. */
-/** Arrow keys on the drag handle: earlier or later in the flow. */
-const MOVE_KEYS: Record<string, -1 | 1> = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }
+/** Arrow keys on the drag handle: one cell in that direction. */
+const MOVE_KEYS: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowRight: [1, 0] }
 
-/** Where a dragged block lands: next to this card, or inside it as its last child. */
-export type DropPosition = 'before' | 'inside' | 'after'
-
-/** Grid columns (of 6) each size spans. */
-export const SIZE_SPAN: Record<Size, number> = { S: 2, M: 3, L: 4, F: 6 }
-const SIZE_LABEL: Record<Size, string> = { S: '⅓', M: '½', L: '⅔', F: '1' }
-const SIZE_NAME: Record<Size, string> = { S: 'a third', M: 'half', L: 'two thirds', F: 'full width' }
-
-/** The size whose span is closest to `columns`. */
-function sizeForColumns(columns: number): Size {
-  return SIZES.reduce((best, s) => (Math.abs(SIZE_SPAN[s] - columns) < Math.abs(SIZE_SPAN[best] - columns) ? s : best))
+/** Cell of the level's grid, zero-based. */
+export interface Cell {
+  col: number
+  row: number
 }
+
+/** CSS grid placement of an area. */
+export const areaStyle = ({ col, row, width, height }: Area) => ({
+  gridColumn: `${col + 1} / span ${width}`,
+  gridRow: `${row + 1} / span ${height}`,
+})
 
 interface Props {
   block: Block
+  /** Place on the level's grid. */
+  area: Area
   editing: boolean
   onRename: (id: string, title: string) => void
   onDescribe: (id: string, description: string) => void
@@ -39,33 +39,38 @@ interface Props {
   onStartConnect: (id: string) => void
   onConnectTarget: (id: string) => void
   onRegisterEl: (id: string, el: HTMLDivElement | null) => void
-  /** Drag and drop to reorder, edit mode only. */
+  /** Drag and drop to another place, edit mode only. */
   isDragged: boolean
-  dropPosition: DropPosition | null
-  /** The dragged block may move into this one (it has room for another child). */
-  canDropInside: boolean
-  onDragStartBlock: (id: string) => void
-  onDragOverBlock: (id: string, position: DropPosition) => void
+  /** The dragged block would move into this one. */
+  isDropTarget: boolean
+  /** `offset`: where the card was grabbed, from its top-left corner. */
+  onDragStartBlock: (id: string, offset: { x: number; y: number }) => void
   onDragEndBlock: () => void
-  /** Keyboard reordering from the drag handle: one place earlier (-1) or later (1). */
-  onMoveBy: (id: string, delta: -1 | 1) => void
-  onShowDetails: (id: string) => void
+  /** Arrow keys on the drag handle: move by a cell, or with Shift grow or shrink the block. */
+  onNudge: (id: string, dx: number, dy: number, resize: boolean) => void
+  /** Opens the details popup next to `anchor` (the control that was clicked). */
+  onShowDetails: (id: string, anchor: DOMRect) => void
   /** Choosing blocks to group: a click selects instead of opening. */
   selectable: boolean
   selected: boolean
   onToggleSelect: (id: string) => void
-  onResize: (id: string, size: Size) => void
+  /** Grid cell under a point on screen (the nearest one outside the grid). */
+  cellAt: (x: number, y: number) => Cell | null
+  /** Whether this block may take `area` (inside the grid, no other block there). */
+  canPlace: (id: string, area: Area) => boolean
+  onPlace: (id: string, at: string) => void
 }
 
 export function BlockCard({
   block, editing, onRename, onDescribe, onDelete, onAddChild, onDrillIn,
   connectingFrom, canLinkTo, isConnected, onStartConnect, onConnectTarget, onRegisterEl,
-  isDragged, dropPosition, canDropInside, onDragStartBlock, onDragOverBlock, onDragEndBlock, onMoveBy, onShowDetails,
-  selectable, selected, onToggleSelect, onResize,
+  area: placedArea, isDragged, isDropTarget, onDragStartBlock, onDragEndBlock, onNudge, onShowDetails,
+  selectable, selected, onToggleSelect, cellAt, canPlace, onPlace,
 }: Props) {
-  // While the right edge is being dragged: the size under the pointer
-  const [previewSize, setPreviewSize] = useState<Size | null>(null)
-  const size = previewSize ?? block.size ?? DEFAULT_SIZE
+  // While the corner is being dragged: the area under the pointer
+  const [preview, setPreview] = useState<Area | null>(null)
+  const area = preview ?? placedArea
+  const previewOk = !preview || canPlace(block.id, preview)
   const hasDetails = !!block.details?.trim()
   // Direct children only: the counter tells what the next screen holds.
   const childCount = block.children?.length ?? 0
@@ -82,8 +87,6 @@ export function BlockCard({
     window.addEventListener('pointerup', disarm)
     return () => window.removeEventListener('pointerup', disarm)
   }, [armed])
-  // Full-width rows are ordered top to bottom, everything else left to right.
-  const axis = size === 'F' ? 'y' : 'x'
 
   const isConnectingSource = connectingFrom === block.id
   const isConnectable = connectingFrom !== null && connectingFrom !== block.id && canLinkTo
@@ -92,7 +95,8 @@ export function BlockCard({
   const onRegisterElRef = useRef(onRegisterEl)
   onRegisterElRef.current = onRegisterEl
 
-  useEffect(() => {
+  // A layout effect: registered before the viewer routes arrows for the first paint
+  useLayoutEffect(() => {
     onRegisterElRef.current(block.id, cardEl.current)
     return () => { onRegisterElRef.current(block.id, null) }
   }, [block.id])
@@ -117,10 +121,10 @@ export function BlockCard({
   let cardClass = styles.card
   if (hasChildren && !isConnectable && !selectable) cardClass += ` ${styles.cardZoomable}`
   if (selected) cardClass += ` ${styles.cardSelected}`
-  if (size === 'F') cardClass += ` ${styles.cardWide}`
-  if (previewSize) cardClass += ` ${styles.cardResizing}`
+  // A full-width single row reads like a list item
+  if (area.width === 6 && area.height === 1) cardClass += ` ${styles.cardWide}`
+  if (preview) cardClass += ` ${previewOk ? styles.cardResizing : styles.cardResizingBad}`
   if (editing) cardClass += ` ${styles.cardEditing}`
-  else if (hasDetails) cardClass += ` ${styles.cardWithDetails}`
   if (isDragged) cardClass += ` ${styles.cardDragged}`
   if (isConnectingSource) cardClass += ` ${styles.cardConnectingSource}`
   else if (isConnectable && isConnected) cardClass += ` ${styles.cardConnected}`
@@ -132,28 +136,24 @@ export function BlockCard({
       className={cardClass}
       ref={cardEl}
       data-block-id={block.id}
-      data-size={size}
-      data-drop={dropPosition ?? undefined}
-      data-axis={axis}
+      data-at={formatArea(area)}
+      // Phone width hides the description of blocks half the grid wide or narrower
+      data-compact={area.width <= 3 || undefined}
+      data-drop={isDropTarget ? 'inside' : undefined}
+      style={areaStyle(area)}
       onClick={handleCardClick}
       draggable={editing && armed}
       onDragStart={e => {
         if (!armed) { e.preventDefault(); return }
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', block.id)
-        onDragStartBlock(block.id)
-      }}
-      onDragOver={e => {
-        if (!editing) return
         const r = e.currentTarget.getBoundingClientRect()
-        // Along the flow: the outer quarters drop next to the card, the middle into it
-        const t = axis === 'y' ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width
-        onDragOverBlock(block.id, canDropInside && t > 0.25 && t < 0.75 ? 'inside' : t < 0.5 ? 'before' : 'after')
+        onDragStartBlock(block.id, { x: e.clientX - r.left, y: e.clientY - r.top })
       }}
       onDragEnd={() => { setArmed(false); onDragEndBlock() }}
     >
       {editing && (
-        // Right edge: drag to resize, snapping to the four sizes
+        // Bottom-right corner: drag to resize, snapping to the grid cells
         <div
           className={styles.resizeHandle}
           data-resize-handle
@@ -163,23 +163,23 @@ export function BlockCard({
             e.preventDefault()
             e.stopPropagation()
             e.currentTarget.setPointerCapture?.(e.pointerId)
-            setPreviewSize(block.size ?? DEFAULT_SIZE)
+            setPreview(placedArea)
           }}
           onPointerMove={e => {
-            if (!previewSize || !cardEl.current) return
-            const grid = cardEl.current.parentElement
-            if (!grid) return
-            const gap = parseFloat(getComputedStyle(grid).columnGap) || 0
-            const column = (grid.getBoundingClientRect().width - 5 * gap) / 6
-            const columns = (e.clientX - cardEl.current.getBoundingClientRect().left + gap) / (column + gap)
-            const next = sizeForColumns(columns)
-            if (next !== previewSize) setPreviewSize(next)
+            if (!preview) return
+            const cell = cellAt(e.clientX, e.clientY)
+            if (!cell) return
+            const width = Math.max(1, cell.col - placedArea.col + 1)
+            const height = Math.max(1, cell.row - placedArea.row + 1)
+            if (width !== preview.width || height !== preview.height) setPreview({ ...placedArea, width, height })
           }}
           onPointerUp={() => {
-            if (previewSize && previewSize !== (block.size ?? DEFAULT_SIZE)) onResize(block.id, previewSize)
-            setPreviewSize(null)
+            if (preview && previewOk && (preview.width !== placedArea.width || preview.height !== placedArea.height)) {
+              onPlace(block.id, formatArea(preview))
+            }
+            setPreview(null)
           }}
-          onPointerCancel={() => setPreviewSize(null)}
+          onPointerCancel={() => setPreview(null)}
         />
       )}
 
@@ -190,14 +190,14 @@ export function BlockCard({
           role="button"
           tabIndex={0}
           aria-label={`Move ${block.title}`}
-          aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
-          title="Drag to reorder, or focus and use the arrow keys"
+          aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Shift+ArrowRight Shift+ArrowDown"
+          title="Drag to move, or focus and use the arrow keys (with Shift to resize)"
           onPointerDown={() => setArmed(true)}
           onKeyDown={e => {
             const delta = MOVE_KEYS[e.key]
             if (!delta) return
             e.preventDefault()
-            onMoveBy(block.id, delta)
+            onNudge(block.id, delta[0], delta[1], e.shiftKey)
           }}
         />
       )}
@@ -223,29 +223,15 @@ export function BlockCard({
         />
       )}
 
-      {(editing || hasDetails) && (
-        // Viewing: only when there are details. Editing: always, to add them.
+      {editing && (
+        // Editing: always, to add details. Viewing: the "Details" link below.
         <button
           className={`${styles.detailsBtn} ${hasDetails ? styles.detailsBtnFilled : ''}`}
-          onClick={e => { e.stopPropagation(); onShowDetails(block.id) }}
+          onClick={e => { e.stopPropagation(); onShowDetails(block.id, e.currentTarget.getBoundingClientRect()) }}
           aria-label={`Details of ${block.title}`}
           title={hasDetails ? 'Details' : 'Add details'}
         >
           <DetailsIcon />
-        </button>
-      )}
-
-      {editing && (
-        <button
-          className={styles.sizeBtn}
-          onClick={e => {
-            e.stopPropagation()
-            onResize(block.id, SIZES[(SIZES.indexOf(size) + 1) % SIZES.length]!)
-          }}
-          aria-label={`Size of ${block.title}: ${SIZE_NAME[size]}`}
-          title="Size: click to change, or drag the right edge"
-        >
-          {SIZE_LABEL[size]}
         </button>
       )}
 
@@ -300,28 +286,41 @@ export function BlockCard({
         </div>
       </div>
 
-      {hasChildren && (
-        // No handler of its own: the click bubbles to the card. The button keeps
-        // the zoom reachable from the keyboard.
-        <button className={styles.inside} aria-label={`Zoom into ${block.title}`}>
-          {childCount} more inside
-        </button>
-      )}
+      {/* Bottom line: what is inside on the left, the details on the right */}
+      <div className={styles.footer}>
+        {hasChildren && (
+          // No handler of its own: the click bubbles to the card. The button keeps
+          // the zoom reachable from the keyboard.
+          <button className={styles.inside} aria-label={`Zoom into ${block.title}`}>
+            {childCount} more inside
+          </button>
+        )}
 
-      {!hasChildren && editing && (
-        // Same place and look as "N more inside": a quiet line, not a box
-        <button
-          className={`${styles.inside} ${styles.addInside}`}
-          onClick={e => {
-            e.stopPropagation()
-            if (!cardEl.current) return
-            onAddChild(block, getCardRect())
-          }}
-          aria-label={`Add child to ${block.title}`}
-        >
-          <PlusIcon size={11} /> add inside
-        </button>
-      )}
+        {!hasChildren && editing && (
+          // Same place and look as "N more inside": a quiet line, not a box
+          <button
+            className={`${styles.inside} ${styles.addInside}`}
+            onClick={e => {
+              e.stopPropagation()
+              if (!cardEl.current) return
+              onAddChild(block, getCardRect())
+            }}
+            aria-label={`Add child to ${block.title}`}
+          >
+            <PlusIcon size={11} /> add inside
+          </button>
+        )}
+
+        {hasDetails && !editing && (
+          <button
+            className={styles.detailsLink}
+            onClick={e => { e.stopPropagation(); onShowDetails(block.id, e.currentTarget.getBoundingClientRect()) }}
+            aria-label={`Details of ${block.title}`}
+          >
+            Details
+          </button>
+        )}
+      </div>
     </div>
   )
 }

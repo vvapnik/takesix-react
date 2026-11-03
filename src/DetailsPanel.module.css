@@ -1,31 +1,43 @@
 .panel {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
   z-index: 15;
-  width: min(380px, 90%);
+  width: min(360px, calc(100% - 16px));
+  max-height: min(380px, calc(100% - 16px));
   box-sizing: border-box;
-  padding: 20px 22px;
+  padding: 16px 18px;
   overflow-y: auto;
   background: var(--ts-surface);
-  border-left: 1px solid var(--ts-border);
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--ts-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
   font-size: 0.85rem;
   color: var(--ts-text);
   cursor: default;
-  animation: slideIn 0.18s ease-out;
+  animation: popIn 0.14s ease-out;
 }
 
-@keyframes slideIn {
-  from { transform: translateX(24px); opacity: 0; }
+/* Grown to the whole viewer */
+.panelExpanded {
+  inset: 8px;
+  width: auto;
+  max-height: none;
+  padding: 24px 28px;
 }
 
-.close {
-  all: unset;
+@keyframes popIn {
+  from { transform: scale(0.97); opacity: 0; }
+}
+
+.controls {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 2px;
+}
+
+.control {
+  all: unset;
   width: 24px;
   height: 24px;
   display: flex;
@@ -36,7 +48,7 @@
   cursor: pointer;
 }
 
-.close:hover {
+.control:hover {
   background: var(--ts-bg);
   color: var(--ts-text);
 }
@@ -45,8 +57,8 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding-right: 28px;
-  margin-bottom: 16px;
+  padding-right: 56px;
+  margin-bottom: 14px;
 }
 
 .icon {
@@ -70,7 +82,7 @@
 .editor {
   box-sizing: border-box;
   width: 100%;
-  min-height: 160px;
+  min-height: 120px;
   padding: 8px 10px;
   border: 1px solid var(--ts-border);
   border-radius: 8px;

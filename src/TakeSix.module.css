@@ -22,6 +22,7 @@
   --ts-danger: #b42318;
   --ts-danger-soft: #fee2e2;
   --ts-danger-border: #f5c2c2;
+  --ts-warning: #b54708;
   color-scheme: light;
 
   height: 100%;
@@ -56,6 +57,7 @@
   --ts-danger: #f87171;
   --ts-danger-soft: #3a1d1f;
   --ts-danger-border: #7f2d2d;
+  --ts-warning: #fdb022;
   color-scheme: dark;
 }
 
@@ -81,6 +83,7 @@
     --ts-danger: #f87171;
     --ts-danger-soft: #3a1d1f;
     --ts-danger-border: #7f2d2d;
+    --ts-warning: #fdb022;
     color-scheme: dark;
   }
 }

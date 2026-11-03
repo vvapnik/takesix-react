@@ -35,48 +35,32 @@
   color: var(--ts-danger);
 }
 
-.sizeBtn {
-  position: absolute;
-  top: 8px;
-  right: 86px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 4px;
-  border-radius: 11px;
-  border: none;
-  background: transparent;
-  color: var(--ts-icon);
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  z-index: 2;
-  transition: background 0.15s, color 0.15s;
-}
-
-.sizeBtn:hover {
-  background: var(--ts-accent-soft);
-  color: var(--ts-accent);
-}
-
-/* Right edge in edit mode: drag to resize */
+/* Bottom-right corner in edit mode: drag to resize */
 .resizeHandle {
   position: absolute;
-  top: 0;
   right: 0;
   bottom: 0;
-  width: 8px;
-  cursor: ew-resize;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
   z-index: 3;
+  background: linear-gradient(135deg, transparent 55%, var(--ts-border-strong) 55%, var(--ts-border-strong) 62%, transparent 62%, transparent 72%, var(--ts-border-strong) 72%, var(--ts-border-strong) 79%, transparent 79%);
 }
 
 .resizeHandle:hover,
 .cardResizing .resizeHandle {
-  background: linear-gradient(to right, transparent 3px, var(--ts-accent) 3px, var(--ts-accent) 5px, transparent 5px);
+  background: linear-gradient(135deg, transparent 55%, var(--ts-accent) 55%, var(--ts-accent) 62%, transparent 62%, transparent 72%, var(--ts-accent) 72%, var(--ts-accent) 79%, transparent 79%);
 }
 
 .cardResizing {
   border-color: var(--ts-accent);
+  z-index: 2;
+}
+
+/* The new size would cover another block or leave the grid */
+.cardResizingBad {
+  border-color: var(--ts-danger);
+  z-index: 2;
 }
 
 .detailsBtn {
@@ -233,13 +217,9 @@
   padding-left: 18px;
 }
 
-/* ...and for the size, details, connect and delete buttons in the top right corner */
+/* ...and for the details, connect and delete buttons in the top right corner */
 .cardEditing .header {
-  padding-right: 116px;
-}
-
-.cardWithDetails .header {
-  padding-right: 36px;
+  padding-right: 88px;
 }
 
 .addInside {
@@ -289,12 +269,7 @@
   opacity: 0.4;
 }
 
-/* Drop indicator: a line just outside the card, on the side the block lands */
-.card[data-drop='before'][data-axis='y'] { box-shadow: 0 -4px 0 -1px var(--ts-accent); }
-.card[data-drop='after'][data-axis='y'] { box-shadow: 0 4px 0 -1px var(--ts-accent); }
-.card[data-drop='before'][data-axis='x'] { box-shadow: -4px 0 0 -1px var(--ts-accent); }
-.card[data-drop='after'][data-axis='x'] { box-shadow: 4px 0 0 -1px var(--ts-accent); }
-/* Into the card: it becomes the block's new parent */
+/* Drop indicator: into the card, it becomes the block's new parent */
 .card[data-drop='inside'] { box-shadow: 0 0 0 2px var(--ts-accent); background: var(--ts-accent-soft); }
 
 .cardZoomable {
@@ -306,11 +281,13 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
+/* Compact, and the same in view and edit mode: a card of one row fits a row
+   of the grid on a laptop screen, and the text does not move between modes */
 .header {
-  padding: 20px 24px 16px;
+  padding: 12px 16px 6px;
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
 }
 
 .icon {
@@ -326,7 +303,7 @@
 }
 
 .title {
-  margin: 0 0 5px;
+  margin: 0 0 4px;
   font-size: 1rem;
   font-weight: 600;
   color: var(--ts-text);
@@ -340,12 +317,6 @@
   line-height: 1.4;
 }
 
-/* Width on the level's 6-column grid */
-.card[data-size='S'] { grid-column: span 2; }
-.card[data-size='M'] { grid-column: span 3; }
-.card[data-size='L'] { grid-column: span 4; }
-.card[data-size='F'] { grid-column: span 6; }
-
 /* Full width: a row, like a list item — text left, "N more inside" right */
 .cardWide {
   flex-direction: row;
@@ -358,9 +329,40 @@
   border-bottom: none;
 }
 
-.cardWide .inside {
-  padding: 0 20px;
-  align-self: center;
+.cardWide .footer {
+  padding: 0 20px 14px;
+  align-self: flex-end;
+}
+
+/* Opens the details popup: a quiet underlined link */
+.detailsLink {
+  all: unset;
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--ts-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.detailsLink:hover {
+  color: var(--ts-accent);
+}
+
+.detailsLink:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Room for the edit-mode underline in view mode too, so the text does not
+   move when editing starts */
+.title,
+.description {
+  border-bottom: 1.5px solid transparent;
+  padding-bottom: 1px;
 }
 
 .editable {
@@ -382,12 +384,24 @@
   background: rgba(61, 106, 255, 0.05);
 }
 
+/* Bottom line of the card, however tall it is: "N more inside" on the
+   left, "Details" on the right */
+.footer {
+  margin-top: auto;
+  padding: 0 16px 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.footer:empty {
+  display: none;
+}
+
 /* "N more inside": the only hint of what the block holds */
 .inside {
   all: unset;
   cursor: inherit;
-  align-self: flex-start;
-  padding: 0 24px 16px;
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -400,23 +414,30 @@
   color: var(--ts-accent);
 }
 
-/* Phone width: blocks of a third or a half show icon, title and "N more
-   inside", no description; the icon goes above the title to leave it room */
+/* Phone width: blocks half the grid wide or narrower show icon, title and
+   "N more inside", no description; the icon goes above the title to leave
+   it room */
 @container ts-level (max-width: 560px) {
-  .card:is([data-size='S'], [data-size='M']):not(.cardEditing) .description { display: none; }
-  .card:is([data-size='S'], [data-size='M']) .header {
+  .card[data-compact]:not(.cardEditing) .description { display: none; }
+  .card[data-compact] .header {
     flex-direction: column;
     gap: 6px;
     padding: 12px 12px 8px;
   }
-  .card:is([data-size='S'], [data-size='M']) .title {
+  .card[data-compact] .title {
     font-size: 0.9rem;
     margin: 0;
     overflow-wrap: anywhere;
   }
-  .card:is([data-size='S'], [data-size='M']) .inside {
+  .card[data-compact] .footer {
     padding: 0 12px 12px;
+  }
+  .card[data-compact] .inside {
     white-space: normal;
+  }
+  /* Phones: no room for the details popup */
+  .detailsLink {
+    display: none;
   }
 }
 

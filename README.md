@@ -52,6 +52,15 @@ function Editor({ initial }: { initial: TakeSixDocument }) {
 `TakeSix` fills its container, so give the container a height. It is only the
 view: the Edit toggle belongs to your app (a toolbar, a menu).
 
+The diagram stays invisible until `style.css` is applied (at most 3 s) and the
+fonts its text uses have loaded, so the first thing people see is the final
+layout. Fonts that load later make it measure the text again.
+
+The text is set in Inter when the page has it, otherwise in the system font.
+Load Inter with the page (for example `@fontsource/inter`) rather than relying
+on a copy installed on the computer: some browsers activate a local font only
+after the first paint, and the whole page then reflows.
+
 ### Props
 
 | Prop | Type | Meaning |
@@ -94,28 +103,34 @@ theme with the `theme` prop, or override variables through `className`:
   than two. An arrow that stands for nested links is dashed.
 - **Directions**: `forward` has one arrowhead, `both` two, `none` none.
 - **Details**: a block with `details` gets a details button (on its card, and
-  in the header once opened) that opens a side panel. `details` is Markdown,
+  in the header once opened) that opens a popup next to it, which can grow to
+  the whole view. `details` is Markdown,
   a safe subset rendered without HTML: `#`–`###` headings, paragraphs, `-`/`1.`
   lists, fenced code, `**bold**`, `*italic*`, `` `code` ``, and links with
   `http(s)`/`mailto` URLs (other schemes are shown as plain text).
-- **Sizes**: a level is one flow of blocks on a 6-column grid. Each block
-  takes a third (`S`), a half (`M`, default), two thirds (`L`) or the full
-  width (`F`); blocks wrap to the next row when they do not fit. Six `F`
-  blocks make a list, three `S` a row of tiles. A full-width card is laid out
-  as a row.
+- **Grid**: every level is a 6×6 grid and each block covers the cells its
+  `at` names (`"A1:C2"`). The six columns always share the full width; rows
+  take the height of their content, and an empty row in between stays as a
+  gap. Arrows run straight across the rows or columns two blocks share. A
+  full-width single-row card is laid out as a row. On phone widths cards half
+  the grid wide or narrower show only icon and title, and empty columns and
+  rows shrink away.
 
 ### Editing
 
 In edit mode you can:
 
 - rename blocks and edit descriptions in place;
-- add and delete blocks; a level stops offering "add" at 6 blocks;
+- add and delete blocks: "Add block" in the toolbar puts one in the first free
+  place, a click on an empty cell of the grid puts it there; a level stops
+  offering "add" at 6 blocks or when the grid is full;
 - group blocks: "Group blocks" in the toolbar, select two or more, Group. They
-  move into a new block ("New group") where the first of them was, which frees
-  room on a full level;
-- reorder blocks by dragging the dotted handle on their left, or focus the
-  handle and use the arrow keys; drop on the middle of another card to move the
-  block inside it, or on a breadcrumb to move it up to that level;
+  move into a new block ("New group") that covers their place (or the first
+  one's, when another block is in the way), which frees room on a full level;
+- move blocks by dragging the dotted handle on their left onto other cells
+  (the target lights up, red when it is taken), or focus the handle and use the
+  arrow keys; drop on the middle of another card to move the block inside it,
+  or on a breadcrumb to move it up to that level;
 - link blocks: press the arrow button on the source, then click the target.
   The target may be on any level: while linking, open blocks ("N more inside")
   or go back up to find it. A block's own ancestors and descendants cannot be
@@ -125,8 +140,8 @@ In edit mode you can:
   link it stands for, with their real endpoints;
 - write details: the details button opens the panel with a Markdown editor
   and a live preview;
-- resize blocks: the size button (⅓ ½ ⅔ 1) cycles the size, or drag the
-  card's right edge, which snaps to the four sizes.
+- resize blocks: drag the card's bottom-right corner, which snaps to the
+  cells, or Shift + arrow keys on the focused handle.
 
 ## Development
 

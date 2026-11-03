@@ -1,36 +1,46 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
+  GRID_SIZE,
   MAX_BLOCKS_PER_LEVEL,
   buildIndex,
+  findPlace,
+  fitsGrid,
+  formatArea,
   getLevel,
+  levelAreas,
+  levelLayoutIssues,
+  overlap,
+  readingOrder,
   visibleLinks,
+  type Area,
   type Block,
-  type Size,
   type Link,
   type TakeSixDocument,
   type VisibleLink,
 } from '@takesix/core'
-import { BlockCard, type CardRect, type DropPosition } from './BlockCard.js'
+import { BlockCard, areaStyle, type CardRect, type Cell } from './BlockCard.js'
 import { HEAD_LENGTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
 import { fitZoom } from './fit.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
 import { DetailsPanel } from './DetailsPanel.js'
-import { DetailsIcon, PlusIcon } from './icons.js'
+import { PlusIcon } from './icons.js'
 import styles from './Viewer.module.css'
 
 /** Edits the viewer asks for. All of them are optional: without one, the matching control is hidden. */
 export interface ViewerActions {
   rename: (id: string, title: string) => void
   describe: (id: string, description: string) => void
+  renameDocument: (title: string) => void
+  describeDocument: (description: string) => void
   remove: (id: string) => void
-  /** Adds an empty block under `parentId` (`null` = top level). */
-  add: (parentId: string | null) => void
-  /** Sets a block's width on its level. */
-  setSize: (id: string, size: Size) => void
+  /** Adds an empty block under `parentId` (`null` = top level), at `at` or the first free place. */
+  add: (parentId: string | null, at?: string) => void
+  /** Moves or resizes a block on its own level. */
+  place: (id: string, at: string) => void
   /** Links `fromId` → `toId`, or removes that link when it exists. */
   toggleLink: (fromId: string, toId: string) => void
-  /** Moves a block to position `index` among the children of `parentId`. */
-  move: (id: string, parentId: string | null, index: number) => void
+  /** Moves a block under `parentId`, to `at` or (without it) its own place if free, else the first free one. */
+  move: (id: string, parentId: string | null, at?: string) => void
   /** Edits one link, found by identity (links in files may have no id). */
   updateLink: (link: Link, changes: LinkEdit) => void
   removeLink: (link: Link) => void
@@ -44,6 +54,8 @@ interface Props {
   document: TakeSixDocument
   editing: boolean
   actions: ViewerActions
+  /** Changes when styles or fonts arrive: text is measured again. */
+  typographyTick: number
 }
 
 interface PathEntry {
@@ -72,7 +84,26 @@ function toRect(r: DOMRect): Rect {
   return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }
 }
 
-export function Viewer({ document: doc, editing, actions }: Props) {
+/** Where a dragged block would land: into another block, or on a place of this level. */
+type DropTarget = { inside: string } | { area: Area; ok: boolean }
+
+/** Areas of `areas` other than block `id`'s own. */
+function othersOf(areas: Map<string, Area>, id: string): Area[] {
+  return [...areas].filter(([other]) => other !== id).map(([, a]) => a)
+}
+
+const isFree = (area: Area, taken: Area[]) => fitsGrid(area) && taken.every(t => !overlap(t, area))
+
+/** Area for a new block started in `cell`: half the grid wide when free, else narrower. */
+function newBlockArea(cell: Cell, taken: Area[]): Area | undefined {
+  for (const width of [3, 2, 1]) {
+    const area = { ...cell, width, height: 1 }
+    if (isFree(area, taken)) return area
+  }
+  return undefined
+}
+
+export function Viewer({ document: doc, editing, actions, typographyTick }: Props) {
   const slideRef = useRef<HTMLDivElement>(null)
   const pendingFrom = useRef<CardRect | null>(null)
   const needsReset = useRef(false)
@@ -81,6 +112,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   const gridAreaRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
   const markerId = useId()
+  const warnMarkerId = useId()
 
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
@@ -89,10 +121,14 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   // Arrow whose links are being edited, by its pair of blocks (see pairKey)
   const [openArrow, setOpenArrow] = useState<string | null>(null)
   const closeArrow = useCallback(() => setOpenArrow(null), [])
-  // Block whose details panel is open
-  const [detailsId, setDetailsId] = useState<string | null>(null)
-  const closeDetails = useCallback(() => setDetailsId(null), [])
-  const [drop, setDrop] = useState<{ id: string; position: DropPosition } | null>(null)
+  // Block whose details popup is open, and the control it opened from
+  const [details, setDetails] = useState<{ id: string; anchor: DOMRect } | null>(null)
+  const detailsId = details?.id ?? null
+  const closeDetails = useCallback(() => setDetails(null), [])
+  const showDetails = useCallback((id: string, anchor: DOMRect) => setDetails({ id, anchor }), [])
+  const [drop, setDrop] = useState<DropTarget | null>(null)
+  // Where the dragged card was grabbed, from its top-left corner
+  const dragOffset = useRef({ x: 0, y: 0 })
   // Breadcrumb a dragged block would move up to
   const [dropCrumb, setDropCrumb] = useState<number | null>(null)
   const [arrowPaths, setArrowPaths] = useState<ArrowPath[]>([])
@@ -119,13 +155,43 @@ export function Viewer({ document: doc, editing, actions }: Props) {
 
   const parentId = livePath.length ? livePath[livePath.length - 1]!.id : null
   const parent: Block | undefined = parentId === null ? undefined : index.get(parentId)?.block
+  // In reading order: the DOM order is what keyboards and screen readers follow
   const blocks = useMemo(
-    () => getLevel(doc, parentId, index).slice(0, MAX_BLOCKS_PER_LEVEL),
+    () => readingOrder(getLevel(doc, parentId, index)).slice(0, MAX_BLOCKS_PER_LEVEL),
     [doc, parentId, index],
   )
+  const areas = useMemo(() => levelAreas(blocks), [blocks])
   const links = useMemo(() => visibleLinks(doc, parentId, index), [doc, parentId, index])
+  // Editing: arrows that run through a block or cross each other, with why
+  const layoutIssues = useMemo(
+    () => (editing ? levelLayoutIssues(doc, parentId, index) : []),
+    [doc, parentId, index, editing],
+  )
+  const arrowWarnings = useMemo(() => {
+    const byArrow = new Map<string, string[]>()
+    for (const issue of layoutIssues) {
+      for (const key of issue.arrows) byArrow.set(key, [...(byArrow.get(key) ?? []), issue.message])
+    }
+    return byArrow
+  }, [layoutIssues])
   const isNested = parentId !== null
-  const canAdd = editing && blocks.length < MAX_BLOCKS_PER_LEVEL
+  const canAdd = editing && blocks.length < MAX_BLOCKS_PER_LEVEL && !!findPlace(areas.values(), 1, 1)
+
+  // The whole 6×6 grid, cells of one size filling the screen, the same when
+  // viewing and editing, so nothing moves between the modes. Phones (viewing
+  // only) get a compact grid instead: the rows in use, as tall as their
+  // content, and empty columns and rows shrunk away (see .grid).
+  const usedRows = Math.max(0, ...[...areas.values()].map(a => a.row + a.height))
+  const covered = (test: (a: Area) => boolean) => [...areas.values()].some(test)
+  const gridStyle = {
+    gridTemplateColumns: editing
+      ? `repeat(${GRID_SIZE}, minmax(0, 1fr))`
+      : Array.from({ length: GRID_SIZE }, (_, c) =>
+          covered(a => a.col <= c && c < a.col + a.width) ? 'minmax(0, 1fr)' : 'var(--ts-empty-col)').join(' '),
+    '--ts-rows-full': `repeat(${GRID_SIZE}, minmax(0, 1fr))`,
+    '--ts-rows-compact': Array.from({ length: Math.max(1, usedRows) }, (_, r) =>
+      covered(a => a.row <= r && r < a.row + a.height) ? 'auto' : '0px').join(' '),
+  } as React.CSSProperties
 
   // FLIP: runs synchronously after DOM update, before paint
   useLayoutEffect(() => {
@@ -204,8 +270,9 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // Recompute arrow paths after blocks/layout settle
-  useEffect(() => {
+  // Recompute arrow paths after blocks/layout settle. A layout effect, so the
+  // first paint already has the arrows; re-runs when the fit zoom changes.
+  useLayoutEffect(() => {
     // If a FLIP zoom-in transform is currently applied, getBoundingClientRect would
     // return animated (wrong) positions. Clear arrows and defer until animation ends.
     const slide = slideRef.current
@@ -239,28 +306,32 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     }
 
     compute()
-  }, [blocks, links, layoutKey, editing, sizeTick, settleTick])
+  }, [blocks, links, layoutKey, editing, sizeTick, settleTick, zoom, typographyTick])
 
-  // Shrink the level to fit a short screen. CSS zoom re-lays it out, so card
-  // rects, arrows and the zoom animation all see the shrunk cards.
+  // Shrink the level when its text does not fit: a card taller than its cells,
+  // or (compact phone grid) rows taller than the screen. CSS zoom re-lays it
+  // out, so card rects, arrows and the zoom animation all see the shrunk cards.
   // fitZoom only shrinks; with new space or new blocks it starts again from 1.
+  // The editor keeps the zoom the view chose, so switching modes moves nothing.
+  // Runs during the zoom animation too, so an opened level already has its
+  // zoom on the first frame: layout sizes do not see the animation's transform.
   const fitFor = useRef('')
   useLayoutEffect(() => {
     const grid = gridRef.current
-    const slide = slideRef.current
-    if (!grid || (slide && (slide.style.transform !== '' || slide.style.transition !== ''))) return
-    // The grid's own box comes from the layout around it, not from the zoom
-    const box = grid.getBoundingClientRect()
-    const key = `${Math.round(box.width)}x${Math.round(box.height)}|${blocks.map(b => b.id).join()}|${editing}`
+    const area = gridAreaRef.current
+    if (!grid || !area) return
+    // The area, not the grid: the grid's own sizes change with its zoom
+    const key = `${area.clientWidth}x${area.clientHeight}|${blocks.map(b => b.id).join()}|${typographyTick}`
     if (key !== fitFor.current) {
       fitFor.current = key
       if (zoom !== 1) { setZoom(1); return }
     }
-    const items = [...grid.children].map(el => toRect(el.getBoundingClientRect()))
-    const rowGap = parseFloat(getComputedStyle(grid).rowGap) || 0
-    const next = fitZoom(box.height, items, rowGap, zoom)
+    if (editing) return
+    const boxes = [grid, ...cardElsMap.current.values()]
+    const overflow = Math.max(...boxes.map(el => (el.clientHeight ? el.scrollHeight / el.clientHeight : 1)))
+    const next = fitZoom(overflow, zoom)
     if (next !== zoom) setZoom(next)
-  }, [blocks, editing, sizeTick, settleTick, layoutKey, zoom])
+  }, [blocks, editing, sizeTick, settleTick, layoutKey, zoom, typographyTick])
 
   // Re-route arrows when the viewer or any card changes size
   const resizeObserver = useRef<ResizeObserver | null>(null)
@@ -356,15 +427,65 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     setDropCrumb(null)
   }
 
-  // Drop on the current indicator. Works over the gaps too, since the
-  // indicator stays on the last card the pointer was over.
+  // Grid cell under a point, measured from the cells drawn in edit mode, so
+  // rows of any height and the fit zoom are taken into account. Outside the
+  // grid: the nearest cell.
+  const cellAt = useCallback((x: number, y: number): Cell | null => {
+    let best: Cell | null = null
+    let bestDistance = Infinity
+    for (const el of gridRef.current?.querySelectorAll<HTMLElement>('[data-cell]') ?? []) {
+      const r = el.getBoundingClientRect()
+      const dx = Math.max(r.left - x, 0, x - r.right)
+      const dy = Math.max(r.top - y, 0, y - r.bottom)
+      const distance = dx * dx + dy * dy
+      if (distance < bestDistance) {
+        bestDistance = distance
+        const [col, row] = el.dataset.cell!.split(',').map(Number)
+        best = { col: col!, row: row! }
+      }
+    }
+    return best
+  }, [])
+
+  const canPlace = useCallback((id: string, area: Area) => isFree(area, othersOf(areas, id)), [areas])
+
+  // While dragging: into the middle of a card with room for a child, or the
+  // place under the dragged card's top-left corner.
+  function dragOver(e: React.DragEvent) {
+    if (!dragId) return
+    e.preventDefault()
+    const own = areas.get(dragId)
+    const card = (e.target as HTMLElement).closest<HTMLElement>('[data-block-id]')
+    const cardId = card?.dataset.blockId
+    if (card && cardId && cardId !== dragId && (index.get(cardId)?.block.children?.length ?? 0) < MAX_BLOCKS_PER_LEVEL) {
+      const r = card.getBoundingClientRect()
+      const tx = (e.clientX - r.left) / r.width
+      const ty = (e.clientY - r.top) / r.height
+      if (tx > 0.25 && tx < 0.75 && ty > 0.25 && ty < 0.75) {
+        if (!(drop && 'inside' in drop && drop.inside === cardId)) setDrop({ inside: cardId })
+        return
+      }
+    }
+    if (!own) return
+    // Aim a little inside the corner, so the cell is the one the corner covers
+    const cell = cellAt(e.clientX - dragOffset.current.x + 8, e.clientY - dragOffset.current.y + 8)
+    if (!cell) return
+    const area = {
+      col: Math.min(cell.col, GRID_SIZE - own.width),
+      row: Math.min(cell.row, GRID_SIZE - own.height),
+      width: own.width,
+      height: own.height,
+    }
+    const same = drop && 'area' in drop && formatArea(drop.area) === formatArea(area)
+    if (!same) setDrop({ area, ok: canPlace(dragId, area) })
+  }
+
   function commitDrop() {
-    if (dragId && drop?.position === 'inside' && drop.id !== dragId) {
-      actions.move(dragId, drop.id, index.get(drop.id)?.block.children?.length ?? 0)
-    } else if (dragId && drop && drop.id !== dragId) {
-      const rest = blocks.map(b => b.id).filter(id => id !== dragId)
-      const at = rest.indexOf(drop.id) + (drop.position === 'after' ? 1 : 0)
-      if (at !== blocks.findIndex(b => b.id === dragId)) actions.move(dragId, parentId, at)
+    if (dragId && drop && 'inside' in drop) {
+      actions.move(dragId, drop.inside)
+    } else if (dragId && drop && 'area' in drop && drop.ok) {
+      const at = formatArea(drop.area)
+      if (at !== blocks.find(b => b.id === dragId)?.at) actions.place(dragId, at)
     }
     endDrag()
   }
@@ -373,7 +494,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   const crumbLevel = (i: number): string | null => (i === 0 ? null : livePath[i - 1]!.id)
   const levelHasRoom = (id: string | null) => getLevel(doc, id, index).length < MAX_BLOCKS_PER_LEVEL
 
-  // A breadcrumb takes a dragged block up to that level, at its end
+  // A breadcrumb takes a dragged block up to that level
   const crumbDrop = (i: number) => editing && i < livePath.length ? {
     onDragOver: (e: React.DragEvent) => {
       if (!dragId || !levelHasRoom(crumbLevel(i))) return
@@ -384,20 +505,22 @@ export function Viewer({ document: doc, editing, actions }: Props) {
     onDragLeave: () => setDropCrumb(null),
     onDrop: (e: React.DragEvent) => {
       e.preventDefault()
-      const level = crumbLevel(i)
-      if (dragId) actions.move(dragId, level, getLevel(doc, level, index).length)
+      if (dragId) actions.move(dragId, crumbLevel(i))
       endDrag()
     },
   } : {}
 
-  // Keyboard reordering keeps the focus on the moved block's handle
+  // Keyboard moves keep the focus on the moved block's handle
   const focusAfterMove = useRef<string | null>(null)
-  function moveBy(id: string, delta: -1 | 1) {
-    const from = blocks.findIndex(b => b.id === id)
-    const to = from + delta
-    if (from === -1 || to < 0 || to >= blocks.length) return
+  function nudge(id: string, dx: number, dy: number, resize: boolean) {
+    const area = areas.get(id)
+    if (!area) return
+    const next = resize
+      ? { ...area, width: area.width + dx, height: area.height + dy }
+      : { ...area, col: area.col + dx, row: area.row + dy }
+    if (!canPlace(id, next)) return
     focusAfterMove.current = id
-    actions.move(id, parentId, to)
+    actions.place(id, formatArea(next))
   }
   useEffect(() => {
     const id = focusAfterMove.current
@@ -407,7 +530,7 @@ export function Viewer({ document: doc, editing, actions }: Props) {
   }, [blocks])
 
   const dropZone = editing ? {
-    onDragOver: (e: React.DragEvent) => { if (dragId) e.preventDefault() },
+    onDragOver: dragOver,
     onDrop: (e: React.DragEvent) => { e.preventDefault(); commitDrop() },
   } : {}
 
@@ -419,10 +542,14 @@ export function Viewer({ document: doc, editing, actions }: Props) {
 
   const crumbs = [{ label: doc.title }, ...livePath.map(p => ({ label: index.get(p.id)?.block.title ?? '' }))]
 
-  const renderCard = (block: Block) => (
-    <BlockCard
+  const renderCard = (block: Block) => {
+    const area = areas.get(block.id)
+    // Only valid documents reach the viewer; a block without a place is skipped
+    if (!area) return null
+    return <BlockCard
       key={block.id}
       block={block}
+      area={area}
       editing={editing}
       onRename={actions.rename}
       onDescribe={actions.describe}
@@ -436,32 +563,47 @@ export function Viewer({ document: doc, editing, actions }: Props) {
       onConnectTarget={connectTarget}
       onRegisterEl={registerCard}
       isDragged={dragId === block.id}
-      dropPosition={dragId && drop?.id === block.id && drop.id !== dragId ? drop.position : null}
-      canDropInside={!!dragId && dragId !== block.id && (block.children?.length ?? 0) < MAX_BLOCKS_PER_LEVEL}
-      onDragStartBlock={setDragId}
-      onDragOverBlock={(id, position) => {
-        if (!dragId) return
-        if (drop?.id !== id || drop.position !== position) setDrop({ id, position })
-      }}
+      isDropTarget={!!drop && 'inside' in drop && drop.inside === block.id}
+      onDragStartBlock={(id, offset) => { dragOffset.current = offset; setDragId(id) }}
       onDragEndBlock={endDrag}
-      onMoveBy={moveBy}
-      onShowDetails={setDetailsId}
+      onNudge={nudge}
+      onShowDetails={showDetails}
       selectable={grouping !== null}
       selected={grouping?.includes(block.id) ?? false}
       onToggleSelect={id => setGrouping(g => g && (g.includes(id) ? g.filter(x => x !== id) : [...g, id]))}
-      onResize={actions.setSize}
+      cellAt={cellAt}
+      canPlace={canPlace}
+      onPlace={actions.place}
     />
-  )
+  }
 
-  const addButton = () => (
-    <button
-      className={styles.addBlock}
-      onClick={() => actions.add(parentId)}
-      aria-label="Add block"
-    >
-      <PlusIcon />
-    </button>
-  )
+  // Edit mode: the cells of the grid. Free ones add a block where clicked;
+  // all of them tell drag and resize which cell is under the pointer.
+  const cells = () => {
+    const taken = [...areas.values()]
+    return Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
+      const cell = { col: i % GRID_SIZE, row: Math.floor(i / GRID_SIZE) }
+      const free = taken.every(t => !overlap(t, { ...cell, width: 1, height: 1 }))
+      const name = formatArea({ ...cell, width: 1, height: 1 })
+      const area = free && canAdd ? newBlockArea(cell, taken) : undefined
+      return area ? (
+        <button
+          key={name}
+          className={`${styles.cell} ${styles.cellFree}`}
+          data-cell={`${cell.col},${cell.row}`}
+          style={areaStyle({ ...cell, width: 1, height: 1 })}
+          tabIndex={-1}
+          title={`Add a block at ${name}`}
+          aria-label={`Add block at ${name}`}
+          onClick={() => actions.add(parentId, formatArea(area))}
+        >
+          <PlusIcon size={14} />
+        </button>
+      ) : (
+        <div key={name} className={styles.cell} data-cell={`${cell.col},${cell.row}`} style={areaStyle({ ...cell, width: 1, height: 1 })} />
+      )
+    })
+  }
 
   return (
     <div className={styles.viewer}>
@@ -535,48 +677,98 @@ export function Viewer({ document: doc, editing, actions }: Props) {
           return (
             <div className={`${styles.slideHeader} ${parent ? '' : styles.slideHeaderTop}`}>
               {head.icon && <span className={styles.slideIcon}>{head.icon}</span>}
+              {/* Editing: the title and description of the document or the opened block, in place */}
               <div className={styles.slideHeaderText}>
-                <h1 className={styles.slideTitle}>{head.title}</h1>
-                {head.description && <p className={styles.slideDescription}>{head.description}</p>}
-              </div>
-              {parent && (editing || parent.details?.trim()) && (
-                <button
-                  className={styles.headerDetailsBtn}
-                  onClick={() => setDetailsId(parent.id)}
-                  aria-label={`Details of ${parent.title}`}
+                <h1
+                  key={`title-${editing}-${parentId}`}
+                  className={`${styles.slideTitle} ${editing ? styles.editable : ''}`}
+                  contentEditable={editing || undefined}
+                  suppressContentEditableWarning
+                  onKeyDown={editing ? e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } } : undefined}
+                  onBlur={editing ? e => {
+                    const text = e.currentTarget.textContent ?? ''
+                    if (parent) actions.rename(parent.id, text)
+                    else actions.renameDocument(text)
+                  } : undefined}
                 >
-                  <DetailsIcon /> {parent.details?.trim() ? 'Details' : 'Add details'}
-                </button>
+                  {head.title}
+                </h1>
+                {(head.description || editing) && (
+                  <p
+                    key={`desc-${editing}-${parentId}`}
+                    className={`${styles.slideDescription} ${editing ? styles.editable : ''}`}
+                    contentEditable={editing || undefined}
+                    suppressContentEditableWarning
+                    data-placeholder="Description"
+                    onBlur={editing ? e => {
+                      const text = e.currentTarget.textContent ?? ''
+                      if (parent) actions.describe(parent.id, text)
+                      else actions.describeDocument(text)
+                    } : undefined}
+                  >
+                    {head.description}
+                  </p>
+                )}
+              </div>
+              {/* On the right, so entering edit mode leaves the grid its size */}
+              <div className={styles.headerActions}>
+                {parent && (editing || parent.details?.trim()) && (
+                  <button
+                    className={styles.headerDetailsLink}
+                    onClick={e => showDetails(parent.id, e.currentTarget.getBoundingClientRect())}
+                    aria-label={`Details of ${parent.title}`}
+                  >
+                    {parent.details?.trim() ? 'Details' : 'Add details'}
+                  </button>
+                )}
+              {editing && (
+                <div className={styles.levelTools} role="group" aria-label="Level tools">
+                  {canAdd && (
+                    <button className={styles.groupBtn} onClick={() => actions.add(parentId)} aria-label="Add block">
+                      <PlusIcon size={11} /> Add block
+                    </button>
+                  )}
+                  {blocks.length >= 2 && <button
+                    className={`${styles.groupBtn} ${grouping ? styles.groupBtnActive : ''}`}
+                    onClick={() => {
+                      setConnectingFrom(null)
+                      setGrouping(g => (g ? null : []))
+                    }}
+                    aria-pressed={grouping !== null}
+                  >
+                    Group blocks
+                  </button>}
+                  {blocks.length >= MAX_BLOCKS_PER_LEVEL && !grouping && (
+                    <span className={styles.fullHint}>
+                      {blocks.length} of {MAX_BLOCKS_PER_LEVEL}: group blocks to add more
+                    </span>
+                  )}
+                  {layoutIssues.length > 0 && (
+                    // The arrows concerned are marked; hover either for the reasons
+                    <span className={styles.layoutHint} title={layoutIssues.map(i => i.message).join('\n')}>
+                      {layoutIssues.length} layout {layoutIssues.length === 1 ? 'hint' : 'hints'}
+                    </span>
+                  )}
+                </div>
               )}
+              </div>
             </div>
           )
         })()}
 
         <div ref={gridAreaRef} className={`${styles.gridArea} ${isNested ? styles.gridAreaNested : ''}`}>
-          {editing && blocks.length >= 2 && (
-            <div className={styles.levelTools} role="group" aria-label="Level tools">
-              <button
-                className={`${styles.groupBtn} ${grouping ? styles.groupBtnActive : ''}`}
-                onClick={() => {
-                  setConnectingFrom(null)
-                  setGrouping(g => (g ? null : []))
-                }}
-                aria-pressed={grouping !== null}
-              >
-                Group blocks
-              </button>
-              {blocks.length >= MAX_BLOCKS_PER_LEVEL && !grouping && (
-                <span className={styles.fullHint}>
-                  {blocks.length} of {MAX_BLOCKS_PER_LEVEL}: group blocks to add more
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* One flow for every level: blocks take 2, 3, 4 or 6 of 6 columns by size */}
-          <div ref={gridRef} className={styles.grid} style={zoom < 1 ? { zoom } : undefined} {...dropZone}>
+          {/* The level's 6×6 grid: each block covers the cells its "at" names */}
+          <div
+            ref={gridRef}
+            className={`${styles.grid} ${editing ? styles.gridEditing : ''}`}
+            style={zoom < 1 ? { ...gridStyle, zoom } : gridStyle}
+            {...dropZone}
+          >
+            {editing && cells()}
             {blocks.map(block => renderCard(block))}
-            {canAdd && addButton()}
+            {drop && 'area' in drop && (
+              <div className={`${styles.dropArea} ${drop.ok ? '' : styles.dropAreaBad}`} style={areaStyle(drop.area)} />
+            )}
           </div>
 
           {blocks.length === 0 && !editing && (
@@ -590,9 +782,16 @@ export function Viewer({ document: doc, editing, actions }: Props) {
                 <marker id={markerId} markerWidth={HEAD_LENGTH} markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
                   <path d={`M 0 0 L ${HEAD_LENGTH} 4 L 0 8 Z`} className={styles.arrowHead} />
                 </marker>
+                <marker id={warnMarkerId} markerWidth={HEAD_LENGTH} markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+                  <path d={`M 0 0 L ${HEAD_LENGTH} 4 L 0 8 Z`} className={styles.arrowHeadWarn} />
+                </marker>
               </defs>
-              {arrows.map(a => (
-                <g key={a.key} data-link={a.key}>
+              {arrows.map(a => {
+                // Editing only: a layout problem, explained on hover
+                const warnings = arrowWarnings.get(a.key)
+                const head = `url(#${warnings ? warnMarkerId : markerId})`
+                return (
+                <g key={a.key} data-link={a.key} data-layout-warning={warnings ? true : undefined}>
                   {editing && (
                     // Wide invisible stroke: easy to hit, opens the link editor
                     <path
@@ -600,14 +799,17 @@ export function Viewer({ document: doc, editing, actions }: Props) {
                       className={styles.arrowHit}
                       role="button"
                       aria-label={`Edit link ${index.get(a.link.from)?.block.title ?? a.link.from} – ${index.get(a.link.to)?.block.title ?? a.link.to}`}
+                      aria-description={warnings?.join('. ')}
                       onClick={e => { e.stopPropagation(); setOpenArrow(pairKey(a.link)) }}
-                    />
+                    >
+                      {warnings && <title>{warnings.join('\n')}</title>}
+                    </path>
                   )}
                   <path
                     d={a.d}
-                    className={`${styles.arrow} ${a.link.direct ? '' : styles.arrowIndirect}`}
-                    markerEnd={a.link.direction !== 'none' ? `url(#${markerId})` : undefined}
-                    markerStart={a.link.direction === 'both' ? `url(#${markerId})` : undefined}
+                    className={`${styles.arrow} ${a.link.direct ? '' : styles.arrowIndirect} ${warnings ? styles.arrowWarn : ''}`}
+                    markerEnd={a.link.direction !== 'none' ? head : undefined}
+                    markerStart={a.link.direction === 'both' ? head : undefined}
                   />
                   {a.label && (
                     // Vertical arrows often cross a narrow gap between rows: label beside the arrow.
@@ -623,7 +825,8 @@ export function Viewer({ document: doc, editing, actions }: Props) {
                     </text>
                   )}
                 </g>
-              ))}
+                )
+              })}
             </svg>
           )}
 
@@ -645,10 +848,12 @@ export function Viewer({ document: doc, editing, actions }: Props) {
         </div>
       </div>
 
-      {/* Outside the slide: full height on the right, on any level */}
-      {detailsBlock && (
+      {/* Outside the slide, so it is not zoomed or clipped with the level */}
+      {detailsBlock && details && (
         <DetailsPanel
+          key={detailsBlock.id}
           block={detailsBlock}
+          anchor={details.anchor}
           editing={editing}
           onChange={details => actions.setDetails(detailsBlock.id, details)}
           onClose={closeDetails}

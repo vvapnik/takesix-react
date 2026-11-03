@@ -11,16 +11,17 @@ function sampleDoc(): TakeSixDocument {
     title: 'Shop',
     description: 'Online shop architecture',
     blocks: [
-      { id: 'web', title: 'Web app', description: 'Frontend' },
+      { id: 'web', title: 'Web app', description: 'Frontend', at: 'A1:C1' },
       {
         id: 'api',
         title: 'API',
+        at: 'D1:F1',
         children: [
-          { id: 'auth', title: 'Auth' },
-          { id: 'orders', title: 'Orders' },
+          { id: 'auth', title: 'Auth', at: 'A1:C1' },
+          { id: 'orders', title: 'Orders', at: 'D1:F1' },
         ],
       },
-      { id: 'db', title: 'Database' },
+      { id: 'db', title: 'Database', at: 'A2:F2' },
     ],
     links: [{ id: 'l1', from: 'web', to: 'api' }],
   }
@@ -37,6 +38,24 @@ function renderEditable(initial = sampleDoc()) {
   render(<Harness />)
   return { latest, onChange, user: userEvent.setup() }
 }
+
+// jsdom has no layout: give the edit-mode cells a 100×80 box each
+function layoutCells() {
+  for (const el of document.querySelectorAll<HTMLElement>('[data-cell]')) {
+    const [col, row] = el.dataset.cell!.split(',').map(Number)
+    el.getBoundingClientRect = () => new DOMRect(col! * 100, row! * 80, 100, 80)
+  }
+}
+const cell = (col: number, row: number) => document.querySelector(`[data-cell="${col},${row}"]`) as HTMLElement
+
+/** A drag event with coordinates, which jsdom's drag events do not carry. */
+function dragAt(type: 'dragStart' | 'dragOver', target: HTMLElement, x: number, y: number, dataTransfer: object) {
+  const event = createEvent[type](target, { dataTransfer })
+  Object.defineProperty(event, 'clientX', { value: x })
+  Object.defineProperty(event, 'clientY', { value: y })
+  fireEvent(target, event)
+}
+const dragOverAt = (target: HTMLElement, x: number, y: number, dataTransfer: object) => dragAt('dragOver', target, x, y, dataTransfer)
 
 // No breadcrumb on the top level: [] there.
 const crumbs = () => {
@@ -61,27 +80,44 @@ describe('TakeSix (read-only)', () => {
 
   it('counts direct children instead of previewing them', () => {
     const doc = sampleDoc()
-    doc.blocks[1]!.children![1]!.children = [{ id: 'deep', title: 'Deep' }]
+    doc.blocks[1]!.children![1]!.children = [{ id: 'deep', title: 'Deep', at: 'A1' }]
     render(<TakeSix document={doc} />)
     expect(screen.getByRole('button', { name: 'Zoom into API' })).toHaveTextContent('2 more inside')
     expect(screen.queryByText('Auth')).toBeNull()
   })
 
-  it('shows details in a side panel, only for blocks that have them', async () => {
+  it('shows details in a popup, only for blocks that have them', async () => {
     const user = userEvent.setup()
     const doc = sampleDoc()
     doc.blocks[0]!.details = 'Built with **React**'
     render(<TakeSix document={doc} />)
 
     expect(screen.queryByRole('button', { name: 'Details of Database' })).toBeNull()
-    await user.click(screen.getByRole('button', { name: 'Details of Web app' }))
-    const panel = screen.getByRole('complementary', { name: 'Details: Web app' })
+    const link = screen.getByRole('button', { name: 'Details of Web app' })
+    expect(link).toHaveTextContent('Details')
+    await user.click(link)
+    const panel = screen.getByRole('dialog', { name: 'Details: Web app' })
     expect(within(panel).getByText('React').tagName).toBe('STRONG')
-    // the details button does not open the block
+    // the details link does not open the block
     expect(crumbs()).toEqual([])
 
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('complementary')).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('grows the details popup to the whole view and back, and closes on a press outside', async () => {
+    const user = userEvent.setup()
+    const doc = sampleDoc()
+    doc.blocks[0]!.details = 'Built with React'
+    render(<TakeSix document={doc} />)
+
+    await user.click(screen.getByRole('button', { name: 'Details of Web app' }))
+    await user.click(screen.getByRole('button', { name: 'Expand details' }))
+    await user.click(screen.getByRole('button', { name: 'Shrink details' }))
+    expect(screen.getByRole('button', { name: 'Expand details' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('heading', { level: 1 }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('offers the opened block\'s details in its header', async () => {
@@ -91,7 +127,7 @@ describe('TakeSix (read-only)', () => {
     render(<TakeSix document={doc} />)
     await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
     await user.click(screen.getByRole('button', { name: 'Details of API' }))
-    expect(screen.getByRole('complementary')).toHaveTextContent('All public endpoints')
+    expect(screen.getByRole('dialog')).toHaveTextContent('All public endpoints')
   })
 
   it('follows the system theme by default and can force one', () => {
@@ -199,6 +235,34 @@ describe('TakeSix (editing)', () => {
     expect(latest.doc.links).toBeUndefined()
   })
 
+  it('edits the header: the document on the top level, the opened block below it', async () => {
+    const { user, latest } = renderEditable()
+    const title = screen.getByRole('heading', { level: 1 })
+    await user.click(title)
+    await user.keyboard('{Control>}a{/Control}Store{Enter}')
+    expect(latest.doc.title).toBe('Store')
+    // the description can be cleared: the field leaves the file
+    const description = screen.getByText('Online shop architecture')
+    await user.click(description)
+    await user.keyboard('{Control>}a{/Control}{Backspace}')
+    await user.tab()
+    expect(latest.doc).not.toHaveProperty('description')
+
+    await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
+    const nested = screen.getByRole('heading', { level: 1 })
+    expect(nested).toHaveTextContent('API')
+    await user.click(nested)
+    await user.keyboard('{Control>}a{/Control}Gateway{Enter}')
+    expect(findBlock(latest.doc, 'api')?.title).toBe('Gateway')
+  })
+
+  it('keeps the level tools in the header, not above the grid', () => {
+    renderEditable()
+    const tools = screen.getByRole('group', { name: 'Level tools' })
+    // Level tools → header actions → the header, which holds the title
+    expect(tools.parentElement!.parentElement).toContainElement(screen.getByRole('heading', { level: 1 }))
+  })
+
   it('renames a block and ignores an empty title', async () => {
     const { user, latest } = renderEditable()
     const title = screen.getByRole('heading', { name: 'Database' })
@@ -225,7 +289,7 @@ describe('TakeSix (editing)', () => {
     expect(latest.doc.links?.map(l => [l.from, l.to])).toEqual([['api', 'db']])
   })
 
-  it('reorders blocks by dragging the handle', () => {
+  it('moves a block to a free place by dragging the handle', () => {
     const { latest } = renderEditable()
     const card = (id: string) => document.querySelector(`[data-block-id="${id}"]`) as HTMLElement
     const handle = (id: string) => card(id).querySelector('[data-drag-handle]') as HTMLElement
@@ -236,18 +300,23 @@ describe('TakeSix (editing)', () => {
 
     fireEvent.pointerDown(handle('db'))
     expect(card('db')).toHaveAttribute('draggable', 'true')
-    fireEvent.dragStart(card('db'), { dataTransfer })
-    // jsdom rects are all zero and its drag events carry no coordinates:
-    // set clientX by hand, left of the middle means "before"
-    const over = createEvent.dragOver(card('web'), { dataTransfer })
-    Object.defineProperty(over, 'clientX', { value: -1 })
-    fireEvent(card('web'), over)
-    expect(card('web')).toHaveAttribute('data-drop', 'before')
-    fireEvent.drop(card('web'), { dataTransfer })
+    // grabbed at the card's top-left corner (its rect is all zero in jsdom)
+    dragAt('dragStart', card('db'), 0, 0, dataTransfer)
+    layoutCells()
+    // A taken place is shown but not accepted
+    dragOverAt(cell(0, 0), 10, 10, dataTransfer)
+    fireEvent.drop(cell(0, 0), { dataTransfer })
+    expect(findBlock(latest.doc, 'db')?.at).toBe('A2:F2')
+
+    fireEvent.pointerDown(handle('db'))
+    dragAt('dragStart', card('db'), 0, 0, dataTransfer)
+    layoutCells()
+    dragOverAt(cell(0, 2), 10, 170, dataTransfer)
+    fireEvent.drop(cell(0, 2), { dataTransfer })
     fireEvent.dragEnd(card('db'), { dataTransfer })
 
-    expect(latest.doc.blocks.map(b => b.id)).toEqual(['db', 'web', 'api'])
-    expect(card('web')).not.toHaveAttribute('data-drop')
+    expect(findBlock(latest.doc, 'db')?.at).toBe('A3:F3')
+    expect(validateDocument(latest.doc).valid).toBe(true)
   })
 
   it('moves a block into another one dropped on its middle', () => {
@@ -289,22 +358,25 @@ describe('TakeSix (editing)', () => {
     expect(getLevel(latest.doc, 'api').map(b => b.id)).toEqual(['orders'])
   })
 
-  it('reorders blocks with the arrow keys on the drag handle', async () => {
+  it('moves and resizes a block with the arrow keys on the drag handle', async () => {
     const { latest, user } = renderEditable()
-    const handle = screen.getByRole('button', { name: 'Move Database' })
+    const at = () => findBlock(latest.doc, 'db')?.at
 
-    handle.focus()
-    await user.keyboard('{ArrowUp}')
-    expect(latest.doc.blocks.map(b => b.id)).toEqual(['web', 'db', 'api'])
+    screen.getByRole('button', { name: 'Move Database' }).focus()
+    await user.keyboard('{ArrowDown}')
+    expect(at()).toBe('A3:F3')
     // focus stays on the moved block, so it can keep going
     expect(screen.getByRole('button', { name: 'Move Database' })).toHaveFocus()
-    await user.keyboard('{ArrowLeft}')
-    expect(latest.doc.blocks.map(b => b.id)).toEqual(['db', 'web', 'api'])
-    // already first: nothing happens
     await user.keyboard('{ArrowUp}')
-    expect(latest.doc.blocks.map(b => b.id)).toEqual(['db', 'web', 'api'])
-    await user.keyboard('{ArrowDown}')
-    expect(latest.doc.blocks.map(b => b.id)).toEqual(['web', 'db', 'api'])
+    expect(at()).toBe('A2:F2')
+    // the row above is taken: nothing happens
+    await user.keyboard('{ArrowUp}')
+    expect(at()).toBe('A2:F2')
+    // with Shift the arrows resize
+    await user.keyboard('{Shift>}{ArrowLeft}{ArrowDown}{/Shift}')
+    expect(at()).toBe('A2:E3')
+    await user.keyboard('{ArrowRight}')
+    expect(at()).toBe('B2:F3')
   })
 
   it('does not open a block from its drag handle', async () => {
@@ -342,6 +414,40 @@ describe('TakeSix (editing)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('marks arrows that run through a block, in edit mode only', () => {
+    const doc: TakeSixDocument = {
+      takesix: '1.0',
+      title: 'Row',
+      blocks: [
+        { id: 'a', title: 'A', at: 'A1:B1' },
+        { id: 'b', title: 'B', at: 'C1:D1' },
+        { id: 'c', title: 'C', at: 'E1:F1' },
+      ],
+      links: [{ id: 'l', from: 'a', to: 'c' }],
+    }
+    // Arrows are routed from card rects: give the cards some in jsdom
+    const rects: Record<string, DOMRect> = {
+      a: new DOMRect(0, 0, 100, 60), b: new DOMRect(200, 0, 100, 60), c: new DOMRect(400, 0, 100, 60),
+    }
+    const original = HTMLElement.prototype.getBoundingClientRect
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      const id = (this as HTMLElement).dataset.blockId
+      return (id && rects[id]) || new DOMRect(0, 0, 1000, 600)
+    }
+    try {
+      const { rerender } = render(<TakeSix document={doc} onChange={() => {}} />)
+      expect(screen.queryByText(/layout hint/)).toBeNull()
+      expect(document.querySelector('[data-layout-warning]')).toBeNull()
+
+      rerender(<TakeSix document={doc} onChange={() => {}} editing />)
+      const hint = screen.getByText('1 layout hint')
+      expect(hint).toHaveAttribute('title', expect.stringContaining('has block "b" in its way'))
+      expect(document.querySelector('[data-link="a|c"]')).toHaveAttribute('data-layout-warning')
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original
+    }
   })
 
   it('edits a link: label, direction, reverse and delete', async () => {
@@ -408,9 +514,9 @@ describe('TakeSix (editing)', () => {
   it('groups blocks to make room on a full level', async () => {
     const full = sampleDoc()
     full.blocks.push(
-      { id: 'cdn', title: 'CDN' },
-      { id: 'queue', title: 'Queue' },
-      { id: 'mail', title: 'Mail' },
+      { id: 'cdn', title: 'CDN', at: 'A3:F3' },
+      { id: 'queue', title: 'Queue', at: 'A4:F4' },
+      { id: 'mail', title: 'Mail', at: 'A5:F5' },
     )
     const { user, latest } = renderEditable(full)
     expect(screen.queryByRole('button', { name: 'Add block' })).toBeNull()
@@ -427,11 +533,11 @@ describe('TakeSix (editing)', () => {
     expect(bar).toHaveTextContent('2 selected')
     await user.click(within(bar).getByRole('button', { name: 'Group' }))
 
-    // the group takes the place of the first of them, in level order
+    // the group covers the place of both, which keep their arrangement inside
     expect(latest.doc.blocks.map(b => b.id)).toHaveLength(5)
     const group = latest.doc.blocks[4]!
-    expect(group).toMatchObject({ title: 'New group', description: '2 blocks' })
-    expect(group.children!.map(b => b.id)).toEqual(['queue', 'mail'])
+    expect(group).toMatchObject({ title: 'New group', description: '2 blocks', at: 'A4:F5' })
+    expect(group.children!.map(b => [b.id, b.at])).toEqual([['queue', 'A1:F1'], ['mail', 'A2:F2']])
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.getByRole('button', { name: 'Add block' })).toBeInTheDocument()
   })
@@ -444,46 +550,35 @@ describe('TakeSix (editing)', () => {
     expect(screen.queryByRole('button', { name: 'Select API' })).toBeNull()
   })
 
-  it('cycles a block\'s size with its size button', async () => {
+  it('adds a block in a free cell when it is clicked', async () => {
     const { user, latest } = renderEditable()
-    const card = () => document.querySelector('[data-block-id="db"]') as HTMLElement
-    expect(card()).toHaveAttribute('data-size', 'M')
-
-    await user.click(screen.getByRole('button', { name: 'Size of Database: half' }))
-    expect(findBlock(latest.doc, 'db')?.size).toBe('L')
-    await user.click(screen.getByRole('button', { name: 'Size of Database: two thirds' }))
-    expect(findBlock(latest.doc, 'db')?.size).toBe('F')
-    expect(card()).toHaveAttribute('data-size', 'F')
-    await user.click(screen.getByRole('button', { name: 'Size of Database: full width' }))
-    expect(findBlock(latest.doc, 'db')?.size).toBe('S')
-    // back to the default: the field is dropped from the file
-    await user.click(screen.getByRole('button', { name: 'Size of Database: a third' }))
-    expect(findBlock(latest.doc, 'db')).not.toHaveProperty('size')
+    expect(screen.queryByRole('button', { name: 'Add block at A1' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Add block at B3' }))
+    // half the grid wide when there is room
+    expect(latest.doc.blocks.at(-1)).toMatchObject({ title: 'New block', at: 'B3:D3' })
   })
 
-  it('resizes a block by dragging its right edge, snapping to the sizes', () => {
+  it('resizes a block by dragging its corner, snapping to the cells', () => {
     const { latest } = renderEditable()
     const card = document.querySelector('[data-block-id="db"]') as HTMLElement
-    const grid = card.parentElement!
-    // a 600px grid without gaps in jsdom: 100px per column, the card starts at 0
-    grid.getBoundingClientRect = () => new DOMRect(0, 0, 600, 400)
-    card.getBoundingClientRect = () => new DOMRect(0, 0, 300, 80)
     const handle = card.querySelector('[data-resize-handle]') as HTMLElement
-    const move = (x: number) => {
+    layoutCells()
+    const move = (x: number, y: number) => {
       const e = createEvent.pointerMove(handle)
       Object.defineProperty(e, 'clientX', { value: x })
+      Object.defineProperty(e, 'clientY', { value: y })
       fireEvent(handle, e)
     }
 
     fireEvent.pointerDown(handle)
-    move(380) // 3.8 columns: closest size is L (4)
-    expect(card).toHaveAttribute('data-size', 'L')
-    move(590) // nearly the full width
-    expect(card).toHaveAttribute('data-size', 'F')
+    move(250, 100) // cell C2
+    expect(card).toHaveAttribute('data-at', 'A2:C2')
+    move(350, 180) // cell D3
+    expect(card).toHaveAttribute('data-at', 'A2:D3')
     // nothing is saved until the pointer is released
-    expect(findBlock(latest.doc, 'db')).not.toHaveProperty('size')
+    expect(findBlock(latest.doc, 'db')?.at).toBe('A2:F2')
     fireEvent.pointerUp(handle)
-    expect(findBlock(latest.doc, 'db')?.size).toBe('F')
+    expect(findBlock(latest.doc, 'db')?.at).toBe('A2:D3')
   })
 
   it('adds a first child and opens the block', async () => {

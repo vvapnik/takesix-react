@@ -94,6 +94,26 @@ function othersOf(areas: Map<string, Area>, id: string): Area[] {
 
 const isFree = (area: Area, taken: Area[]) => fitsGrid(area) && taken.every(t => !overlap(t, area))
 
+/**
+ * Ends the description in a card's text box (`[data-fit]`, measured in full
+ * and too tall) with "…" after the lines that fit. Element sizes only, so
+ * the level's zoom does not matter.
+ */
+function clampDescription(text: HTMLElement) {
+  const description = text.querySelector<HTMLElement>('[data-clamp]')
+  if (!description) return
+  const excess = text.scrollHeight - text.clientHeight
+  const full = description.offsetHeight
+  text.setAttribute('data-clipped', '')
+  description.style.setProperty('--ts-lines', '1')
+  const line = description.offsetHeight
+  if (!line) return
+  const lines = Math.floor((full - excess) / line)
+  // Not even one line: the title takes the room, the description goes
+  if (lines < 1) text.setAttribute('data-clipped', 'all')
+  else description.style.setProperty('--ts-lines', String(lines))
+}
+
 /** Area for a new block started in `cell`: half the grid wide when free, else narrower. */
 function newBlockArea(cell: Cell, taken: Area[]): Area | undefined {
   for (const width of [3, 2, 1]) {
@@ -308,8 +328,9 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
     compute()
   }, [blocks, links, layoutKey, editing, sizeTick, settleTick, zoom, typographyTick])
 
-  // Shrink the level when its text does not fit: a card taller than its cells,
-  // or (compact phone grid) rows taller than the screen. CSS zoom re-lays it
+  // Shrink the level when it does not fit: a card whose title and footer
+  // alone are taller than its cells (longer text ends in "…" instead), or
+  // (compact phone grid) rows taller than the screen. CSS zoom re-lays it
   // out, so card rects, arrows and the zoom animation all see the shrunk cards.
   // fitZoom only shrinks; with new space or new blocks it starts again from 1.
   // The editor keeps the zoom the view chose, so switching modes moves nothing.
@@ -327,9 +348,15 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
       if (zoom !== 1) { setZoom(1); return }
     }
     if (editing) return
-    const boxes = [grid, ...cardElsMap.current.values()]
-    const overflow = Math.max(...boxes.map(el => (el.clientHeight ? el.scrollHeight / el.clientHeight : 1)))
+    const overflowOf = (el: HTMLElement) => (el.clientHeight ? el.scrollHeight / el.clientHeight : 1)
+    const overflow = Math.max(...[grid, ...cardElsMap.current.values()].map(overflowOf))
     const next = fitZoom(overflow, zoom)
+    // A card's text gives way to its footer (see .header) and does not shrink
+    // the level: a description that does not fit ends with "…" after the
+    // lines that fit, measured in full (last time's "…" taken off first)
+    const texts = [...cardElsMap.current.values()].flatMap(el => [...el.querySelectorAll<HTMLElement>('[data-fit]')])
+    for (const el of texts) el.removeAttribute('data-clipped')
+    for (const el of texts) if (overflowOf(el) > 1.01) clampDescription(el)
     if (next !== zoom) setZoom(next)
   }, [blocks, editing, sizeTick, settleTick, layoutKey, zoom, typographyTick])
 

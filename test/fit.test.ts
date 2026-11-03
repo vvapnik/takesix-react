@@ -12,7 +12,7 @@ describe('fitZoom', () => {
   it('shrinks by how much the content overflows', () => {
     // content 680 px in a 612 px box
     expect(fitZoom(680 / 612, 1)).toBeCloseTo(612 / 680, 1)
-    expect(fitZoom(1.25, 0.9)).toBe(0.72)
+    expect(fitZoom(1.05, 0.95)).toBe(0.9)
   })
 
   it('never goes below the minimum', () => {
@@ -21,7 +21,7 @@ describe('fitZoom', () => {
   })
 
   it('only shrinks, even when there is room', () => {
-    expect(fitZoom(0.5, 0.8)).toBe(0.8)
+    expect(fitZoom(0.5, 0.9)).toBe(0.9)
   })
 
   it('shrinks by at least a step while the content still overflows', () => {
@@ -30,6 +30,6 @@ describe('fitZoom', () => {
   })
 
   it('leaves the zoom alone without a measurement', () => {
-    expect(fitZoom(Number.NaN, 0.7)).toBe(0.7)
+    expect(fitZoom(Number.NaN, 0.9)).toBe(0.9)
   })
 })

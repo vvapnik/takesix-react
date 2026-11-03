@@ -290,6 +290,25 @@
   gap: 12px;
 }
 
+/* Viewing: a description that does not fit the card ends with "…" after the
+   lines that fit (--ts-lines, set by the Viewer) rather than shrinking the
+   whole level; the block's own level shows all of it */
+.card:not(.cardEditing) .header {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.card:not(.cardEditing) .header[data-clipped] .description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--ts-lines, 1);
+  overflow: hidden;
+}
+
+.card:not(.cardEditing) .header[data-clipped='all'] .description {
+  display: none;
+}
+
 .icon {
   font-size: 1.5rem;
   line-height: 1;

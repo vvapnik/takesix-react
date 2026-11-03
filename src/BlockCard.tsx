@@ -256,7 +256,7 @@ export function BlockCard({
         </button>
       )}
 
-      <div className={styles.header}>
+      <div className={styles.header} data-fit>
         {block.icon && <span className={styles.icon}>{block.icon}</span>}
         <div className={styles.headerText}>
           <h2
@@ -275,6 +275,7 @@ export function BlockCard({
               key={`desc-${editing}`}
               className={`${styles.description} ${editing ? styles.editable : ''}`}
               data-text
+              data-clamp
               contentEditable={editing || undefined}
               suppressContentEditableWarning
               data-placeholder="Description"

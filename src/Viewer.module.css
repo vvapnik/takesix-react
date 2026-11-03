@@ -285,7 +285,8 @@
 
 /* The level's 6×6 grid: six equal rows filling the screen, the same in view
    and edit mode. Tracks come from the Viewer; empty columns use the variable
-   below. A card with more text than its cells hold makes the level zoom out
+   below. A card's description longer than its cells hold ends in "…"; only
+   a card that cannot fit even its title and footer makes the level zoom out
    (see fitZoom). */
 .grid {
   --ts-empty-col: minmax(0, 1fr);

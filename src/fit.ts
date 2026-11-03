@@ -1,8 +1,8 @@
 // Shrinking a level to fit a short screen. Pure, so it can be tested without
 // a browser layout engine.
 
-/** A level is never shrunk below this; on even shorter screens it overflows. */
-export const MIN_ZOOM = 0.6
+/** A level is never shrunk below this, so its text stays readable. */
+export const MIN_ZOOM = 0.85
 
 /**
  * Zoom for a level whose content needs `overflow` times the height it has

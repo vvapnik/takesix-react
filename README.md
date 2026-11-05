@@ -69,7 +69,26 @@ after the first paint, and the whole page then reflows.
 | `onChange` | `(doc) => void` | Receives the edited document. Without it the diagram is read-only. |
 | `editing` | `boolean` | Show the edit controls. Ignored without `onChange`. |
 | `theme` | `'auto' \| 'light' \| 'dark'` | Colour theme. `auto` (default) follows the system setting. |
+| `menu` | `boolean \| MenuOptions` | Logo button in the bottom-left corner while not editing: open in the online editor, save as HTML/JSON, version. Off by default. |
 | `className` | `string` | Extra class for the root element. |
+
+### Menu
+
+`menu` (or `menu={{ ... }}`) adds a round logo button with a small menu:
+
+- **Open in editor** opens the diagram in the
+  [online editor](https://takesix.vapnik.de/editor/). The document travels in
+  the URL fragment (`#takesix=…`, compressed), which is never sent to a
+  server. Diagrams whose link would be longer than 100 000 characters show an
+  error for now.
+- **Save as** HTML (only with the `html` option) or JSON.
+- The package version.
+
+Options: `editorUrl` (another editor), `html: () => string` (the page to save
+as HTML), and `openLink(url)` / `download(file)` for sandboxed frames that
+cannot open tabs or download, such as MCP Apps. To read such a link in your
+own editor, use `readDocumentFromHash(location.hash)` and validate the result
+with `parseDocument`; `createEditorLink(doc, url)` builds one.
 
 ### Theming
 

@@ -13,6 +13,7 @@ import {
 } from '@takesix/core'
 import { useTypographyReady } from './ready.js'
 import { Viewer, type ViewerActions } from './Viewer.js'
+import { Menu, type MenuOptions } from './Menu.js'
 import styles from './TakeSix.module.css'
 
 export interface TakeSixProps {
@@ -27,6 +28,12 @@ export interface TakeSixProps {
   editing?: boolean
   /** Colour theme. `auto` (default) follows the system setting. */
   theme?: Theme
+  /**
+   * Floating logo button in the bottom-left corner with a menu: open in the
+   * online editor, save as HTML/JSON, version. Shown only while not editing.
+   * `true` for the defaults, or options for the host (see `MenuOptions`).
+   */
+  menu?: boolean | MenuOptions
   className?: string
 }
 
@@ -35,7 +42,7 @@ export type Theme = 'light' | 'dark' | 'auto'
 const NEW_BLOCK = { title: 'New block', description: 'Description' }
 
 /** Viewer and editor for a takesix document: one level on screen, click a block to open it. */
-export function TakeSix({ document: doc, onChange, editing: editingProp = false, theme = 'auto', className }: TakeSixProps) {
+export function TakeSix({ document: doc, onChange, editing: editingProp = false, theme = 'auto', menu = false, className }: TakeSixProps) {
   const editing = onChange !== undefined && editingProp
 
   const actions = useMemo<ViewerActions>(() => {
@@ -124,6 +131,7 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
       style={typography.ready ? undefined : { visibility: 'hidden' }}
     >
       <Viewer document={doc} editing={editing} actions={actions} typographyTick={typography.ready ? typography.tick + 1 : 0} />
+      {menu && !editing && <Menu document={doc} options={menu === true ? {} : menu} />}
     </div>
   )
 }

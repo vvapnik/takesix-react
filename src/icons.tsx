@@ -58,3 +58,18 @@ export function CollapseIcon() {
     </svg>
   )
 }
+
+/** The TakeSix logo; draws with the text colour */
+export function LogoIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="-1.5 2 35 35" fill="currentColor" aria-hidden="true">
+      <rect x="3.6" y="9" width="3.6" height="12" rx="1.8" />
+      <rect x="7.9" y="5" width="3.6" height="16" rx="1.8" />
+      <rect x="12.2" y="3" width="3.6" height="18" rx="1.8" />
+      <rect x="16.5" y="4" width="3.6" height="17" rx="1.8" />
+      <rect x="20.8" y="7" width="3.6" height="14" rx="1.8" />
+      <path d="M3.6 18.6L7.55 17.6L11.85 15.4L16.15 14.6L20.45 15.3L24.4 16.6V29.5C24.4 33.3 21.4 36 17.6 36H10.6C6.7 36 3.6 33 3.6 29.1Z" />
+      <line x1="21.5" y1="31" x2="28.4" y2="19.6" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  )
+}

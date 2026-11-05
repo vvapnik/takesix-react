@@ -1,0 +1,123 @@
+/* Floating logo button in the bottom-left corner and its menu above it */
+.menuRoot {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.fab {
+  all: unset;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ts-surface);
+  border: 1px solid var(--ts-border);
+  color: var(--ts-text);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.fab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.fab:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: 2px;
+}
+
+.fab[aria-expanded='true'] {
+  color: var(--ts-accent);
+}
+
+.menu {
+  width: 232px;
+  box-sizing: border-box;
+  padding: 6px;
+  background: var(--ts-surface);
+  border: 1px solid var(--ts-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+  font-size: 0.85rem;
+  color: var(--ts-text);
+  transform-origin: bottom left;
+  animation: popIn 0.14s ease-out;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.97); opacity: 0; }
+}
+
+.item {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--ts-accent-soft);
+  outline: none;
+}
+
+.item[aria-disabled='true'] {
+  color: var(--ts-text-muted);
+  cursor: progress;
+}
+
+.error {
+  margin: 2px 4px 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--ts-danger-soft);
+  border: 1px solid var(--ts-danger-border);
+  color: var(--ts-danger);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.saveRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 10px;
+}
+
+.saveLabel {
+  flex: 1;
+}
+
+.chip {
+  all: unset;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ts-border);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.chip:hover,
+.chip:focus-visible {
+  border-color: var(--ts-accent);
+  color: var(--ts-accent);
+}
+
+.version {
+  margin: 4px 0 0;
+  padding: 8px 10px 4px;
+  border-top: 1px solid var(--ts-divider);
+  color: var(--ts-text-faint);
+  font-size: 0.72rem;
+}

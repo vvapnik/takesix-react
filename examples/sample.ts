@@ -13,17 +13,6 @@ export const sample: TakeSixDocument = {
       icon: '✦',
       title: 'Answers as diagrams',
       description: 'Instead of a long wall of text, an AI agent answers with a diagram you read at a glance',
-      details: [
-        'Ask an agent to explain a codebase and you get pages of prose: true, but',
-        'hard to take in. Ask for a **TakeSix diagram** and you get the gist on one',
-        'screen, with the depth one click away.',
-        '',
-        '- the top level answers the question in six blocks or fewer;',
-        '- every block opens into the next level of detail;',
-        '- links show only the dependencies that matter;',
-        '- the JSON is checked against the schema, so a broken answer is caught',
-        '  before anyone reads it.',
-      ].join('\n'),
       children: [
         { id: 'flow-ask', at: 'A1:A2', icon: '?', title: 'Ask', description: 'Explain this codebase, this document, this plan' },
         { id: 'flow-write', at: 'C1:C2', icon: '✦', title: 'The agent writes', description: 'Six blocks per level, placed on a grid' },
@@ -48,13 +37,6 @@ export const sample: TakeSixDocument = {
       icon: '⑥',
       title: 'The rule of six',
       description: 'Why a screen holds six blocks at most',
-      details: [
-        'People hold only a handful of things in mind at once. A diagram with',
-        'forty boxes is read box by box; a screen with six is read at a glance.',
-        '',
-        'TakeSix keeps every screen to **six blocks or fewer** and moves the rest',
-        'one level down. You decide how deep to go.',
-      ].join('\n'),
       children: [
         {
           id: 'rule-six', at: 'A1:B2',
@@ -85,12 +67,14 @@ export const sample: TakeSixDocument = {
         {
           id: 'rule-details', at: 'E4:F5',
           icon: '≡',
-          title: 'Details on demand',
-          description: 'Long text opens next to the block, written in Markdown',
+          title: 'Text on demand',
+          description: 'A block opens into more blocks or into text, like this one',
           details: [
             'Cards stay short: an icon, a title, one line of description.',
             '',
-            'Everything else goes to **details**, like this popup. It supports',
+            'A block opens either into more blocks or into text, never both.',
+            'Text opens like any level: the same zoom, the same header, and',
+            'the **details** below it in a column you can read. It supports',
             '*emphasis*, `code`, lists and [links](https://github.com/vvapnik/takesix-react).',
           ].join('\n'),
         },
@@ -112,7 +96,7 @@ export const sample: TakeSixDocument = {
       id: 'format', at: 'A4:A5',
       icon: '⌗',
       title: 'The format',
-      description: 'Plain JSON: blocks on a grid, links, details',
+      description: 'Plain JSON: blocks on a grid, links, text',
       children: [
         { id: 'format-blocks', at: 'A1:B2', icon: '▢', title: 'Blocks', description: 'id, at, title, description, icon, children' },
         { id: 'format-links', at: 'E1:F2', icon: '⇄', title: 'Links', description: 'from, to, label, direction' },
@@ -166,7 +150,7 @@ export const sample: TakeSixDocument = {
       title: '@takesix/react',
       description: 'Viewer and editor for the web',
       children: [
-        { id: 'react-viewer', at: 'A1:B2', icon: '◉', title: 'Viewer', description: 'Zoom animation, arrows, details popup' },
+        { id: 'react-viewer', at: 'A1:B2', icon: '◉', title: 'Viewer', description: 'Zoom animation, arrows, text to read' },
         {
           id: 'react-editor', at: 'E1:F2',
           icon: '✎',

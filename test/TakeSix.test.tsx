@@ -86,48 +86,35 @@ describe('TakeSix (read-only)', () => {
     expect(screen.queryByText('Auth')).toBeNull()
   })
 
-  it('shows details in a popup, only for blocks that have them', async () => {
+  it('opens a text block as a level: same header, the Markdown instead of a grid', async () => {
     const user = userEvent.setup()
     const doc = sampleDoc()
     doc.blocks[0]!.details = 'Built with **React**'
     render(<TakeSix document={doc} />)
 
-    expect(screen.queryByRole('button', { name: 'Details of Database' })).toBeNull()
-    const link = screen.getByRole('button', { name: 'Details of Web app' })
-    expect(link).toHaveTextContent('Details')
-    await user.click(link)
-    const panel = screen.getByRole('dialog', { name: 'Details: Web app' })
-    expect(within(panel).getByText('React').tagName).toBe('STRONG')
-    // the details link does not open the block
+    // The card says it opens into text, where others say what is inside
+    const read = screen.getByRole('button', { name: 'Read Web app' })
+    expect(read).toHaveTextContent('Read')
+    expect(screen.queryByRole('button', { name: 'Read Database' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Details/ })).toBeNull()
+
+    await user.click(read)
+    expect(crumbs()).toEqual(['Shop', 'Web app'])
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Web app')
+    expect(screen.getByText('Frontend')).toBeInTheDocument()
+    expect(screen.getByText('React').tagName).toBe('STRONG')
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Shop' }))
+    await act(() => new Promise(r => setTimeout(r, 400)))
     expect(crumbs()).toEqual([])
-
-    await user.keyboard('{Escape}')
-    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('grows the details popup to the whole view and back, and closes on a press outside', async () => {
-    const user = userEvent.setup()
+  it('does not open an empty text block outside edit mode', () => {
     const doc = sampleDoc()
-    doc.blocks[0]!.details = 'Built with React'
+    doc.blocks[2]!.details = ''
     render(<TakeSix document={doc} />)
-
-    await user.click(screen.getByRole('button', { name: 'Details of Web app' }))
-    await user.click(screen.getByRole('button', { name: 'Expand details' }))
-    await user.click(screen.getByRole('button', { name: 'Shrink details' }))
-    expect(screen.getByRole('button', { name: 'Expand details' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('heading', { level: 1 }))
-    expect(screen.queryByRole('dialog')).toBeNull()
-  })
-
-  it('offers the opened block\'s details in its header', async () => {
-    const user = userEvent.setup()
-    const doc = sampleDoc()
-    doc.blocks[1]!.details = 'All public endpoints'
-    render(<TakeSix document={doc} />)
-    await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
-    await user.click(screen.getByRole('button', { name: 'Details of API' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('All public endpoints')
+    expect(screen.queryByRole('button', { name: 'Read Database' })).toBeNull()
   })
 
   it('follows the system theme by default and can force one', () => {
@@ -497,18 +484,37 @@ describe('TakeSix (editing)', () => {
     expect(screen.queryByRole('button', { name: /Edit link/ })).toBeNull()
   })
 
-  it('adds, edits and removes details in edit mode', async () => {
+  it('turns an empty block into a text block and edits the text on its level', async () => {
     const { user, latest } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'Details of Database' }))
-    const editor = screen.getByRole('textbox', { name: 'Details (Markdown)' })
+    await user.click(screen.getByRole('button', { name: 'Add text inside Database' }))
+    expect(findBlock(latest.doc, 'db')?.details).toBe('')
+    expect(crumbs()).toEqual(['Shop', 'Database'])
+    // A text block holds no blocks: no grid to add to
+    expect(screen.queryByRole('button', { name: 'Add block' })).toBeNull()
 
+    const editor = screen.getByRole('textbox', { name: 'Text of Database (Markdown)' })
     await user.type(editor, 'Primary store')
     await user.tab()
     expect(findBlock(latest.doc, 'db')?.details).toBe('Primary store')
+    // With text, it stays a text block
+    expect(screen.queryByRole('button', { name: /Blocks instead/ })).toBeNull()
 
-    await user.clear(screen.getByRole('textbox', { name: 'Details (Markdown)' }))
+    // Emptied, it may become a block of blocks again
+    await user.clear(screen.getByRole('textbox', { name: 'Text of Database (Markdown)' }))
     await user.tab()
+    expect(findBlock(latest.doc, 'db')?.details).toBe('')
+    await user.click(screen.getByRole('button', { name: /Blocks instead/ }))
     expect(findBlock(latest.doc, 'db')).not.toHaveProperty('details')
+    expect(getLevel(latest.doc, 'db')).toHaveLength(1)
+  })
+
+  it('offers no way to add text to a block with children, or blocks to one with text', () => {
+    const doc = sampleDoc()
+    doc.blocks[0]!.details = 'Some text'
+    renderEditable(doc)
+    expect(screen.queryByRole('button', { name: 'Add text inside API' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add blocks inside Web app' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Read Web app' })).toBeInTheDocument()
   })
 
   it('groups blocks to make room on a full level', async () => {
@@ -583,7 +589,7 @@ describe('TakeSix (editing)', () => {
 
   it('adds a first child and opens the block', async () => {
     const { user, latest } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'Add child to Database' }))
+    await user.click(screen.getByRole('button', { name: 'Add blocks inside Database' }))
     expect(getLevel(latest.doc, 'db')).toHaveLength(1)
     expect(crumbs()).toEqual(['Shop', 'Database'])
   })

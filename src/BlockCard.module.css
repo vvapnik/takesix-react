@@ -63,39 +63,6 @@
   z-index: 2;
 }
 
-.detailsBtn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: var(--ts-icon);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  z-index: 2;
-  transition: background 0.15s, color 0.15s;
-}
-
-/* Edit mode: left of connect and delete */
-.cardEditing .detailsBtn {
-  right: 60px;
-}
-
-.detailsBtnFilled {
-  color: var(--ts-text-faint);
-}
-
-.detailsBtn:hover {
-  background: var(--ts-accent-soft);
-  color: var(--ts-accent);
-}
-
 .connectBtn {
   position: absolute;
   top: 8px;
@@ -217,20 +184,43 @@
   padding-left: 18px;
 }
 
-/* ...and for the details, connect and delete buttons in the top right corner */
+/* ...and for the connect and delete buttons in the top right corner */
 .cardEditing .header {
-  padding-right: 88px;
+  padding-right: 64px;
 }
 
 .addInside {
-  cursor: pointer;
+  cursor: default;
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
-.addInside:hover {
+/* "blocks" or "text": what the empty block will open into */
+.addChoice {
+  all: unset;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--ts-border-strong);
+}
+
+.addChoice:hover {
   color: var(--ts-accent);
+  text-decoration-color: currentColor;
+}
+
+.addChoice:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* "Read": the block opens into text */
+.read {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 /* Tall strip of dots along the left edge: grab it to drag the block */
@@ -353,28 +343,8 @@
   align-self: flex-end;
 }
 
-/* Opens the details popup: a quiet underlined link */
-.detailsLink {
-  all: unset;
-  margin-left: auto;
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--ts-text-muted);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-  white-space: nowrap;
-}
 
-.detailsLink:hover {
-  color: var(--ts-accent);
-}
 
-.detailsLink:focus-visible {
-  outline: 2px solid var(--ts-accent);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
 
 /* Room for the edit-mode underline in view mode too, so the text does not
    move when editing starts */
@@ -403,8 +373,8 @@
   background: rgba(61, 106, 255, 0.05);
 }
 
-/* Bottom line of the card, however tall it is: "N more inside" on the
-   left, "Details" on the right */
+/* Bottom line of the card, however tall it is: what the block opens
+   into ("N more inside", "Read") */
 .footer {
   margin-top: auto;
   padding: 0 16px 10px;
@@ -453,10 +423,6 @@
   }
   .card[data-compact] .inside {
     white-space: normal;
-  }
-  /* Phones: no room for the details popup */
-  .detailsLink {
-    display: none;
   }
 }
 

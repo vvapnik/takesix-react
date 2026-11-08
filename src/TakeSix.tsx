@@ -3,6 +3,7 @@ import {
   addBlock,
   addLink,
   canAddBlock,
+  findBlock,
   groupBlocks,
   moveBlock,
   removeBlock,
@@ -80,6 +81,14 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
       add(parentId, at) {
         if (canAddBlock(doc, parentId)) attempt(() => addBlock(doc, parentId, at ? { ...NEW_BLOCK, at } : NEW_BLOCK).document)
       },
+      makeText(id) {
+        // Only an empty block: one with children keeps them
+        attempt(() => updateBlock(doc, id, { details: '' }))
+      },
+      toBlocks(id) {
+        if (findBlock(doc, id)?.details?.trim()) return
+        attempt(() => addBlock(updateBlock(doc, id, { details: undefined }), id, NEW_BLOCK).document)
+      },
       place(id, at) {
         attempt(() => updateBlock(doc, id, { at }))
       },
@@ -90,7 +99,8 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
         attempt(() => groupBlocks(doc, ids, { title: 'New group', description: `${ids.length} blocks` }).document)
       },
       setDetails(id, details) {
-        commit(updateBlock(doc, id, { details: details.trim() ? details : undefined }))
+        // Emptied, it stays a text block: turning it back is a choice of its own (toBlocks)
+        attempt(() => updateBlock(doc, id, { details }))
       },
       updateLink(link, changes) {
         const next = { ...link } as Record<string, unknown>

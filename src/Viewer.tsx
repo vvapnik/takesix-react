@@ -22,7 +22,7 @@ import { BlockCard, areaStyle, type CardRect, type Cell } from './BlockCard.js'
 import { HEAD_LENGTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
 import { fitZoom } from './fit.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
-import { DetailsPanel } from './DetailsPanel.js'
+import { TextLevel } from './TextLevel.js'
 import { PlusIcon } from './icons.js'
 import styles from './Viewer.module.css'
 
@@ -44,8 +44,12 @@ export interface ViewerActions {
   /** Edits one link, found by identity (links in files may have no id). */
   updateLink: (link: Link, changes: LinkEdit) => void
   removeLink: (link: Link) => void
-  /** Saves a block's Markdown details; an empty string removes them. */
+  /** Saves the Markdown text of a text block (one that opens into `details`). */
   setDetails: (id: string, details: string) => void
+  /** Turns an empty block into a text block: it then opens into text, not blocks. */
+  makeText: (id: string) => void
+  /** Turns an empty text block back into one that holds blocks, and adds the first. */
+  toBlocks: (id: string) => void
   /** Wraps sibling blocks into a new parent block, freeing room on the level. */
   group: (ids: string[]) => void
 }
@@ -141,11 +145,6 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
   // Arrow whose links are being edited, by its pair of blocks (see pairKey)
   const [openArrow, setOpenArrow] = useState<string | null>(null)
   const closeArrow = useCallback(() => setOpenArrow(null), [])
-  // Block whose details popup is open, and the control it opened from
-  const [details, setDetails] = useState<{ id: string; anchor: DOMRect } | null>(null)
-  const detailsId = details?.id ?? null
-  const closeDetails = useCallback(() => setDetails(null), [])
-  const showDetails = useCallback((id: string, anchor: DOMRect) => setDetails({ id, anchor }), [])
   const [drop, setDrop] = useState<DropTarget | null>(null)
   // Where the dragged card was grabbed, from its top-left corner
   const dragOffset = useRef({ x: 0, y: 0 })
@@ -161,8 +160,6 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
   const [zoom, setZoom] = useState(1)
 
   const index = useMemo(() => buildIndex(doc), [doc])
-  // Gone when the block is deleted: the panel closes by itself
-  const detailsBlock = detailsId ? index.get(detailsId)?.block : undefined
 
   // Drop path entries whose blocks no longer exist (e.g. after deletion).
   const livePath = useMemo(() => {
@@ -195,7 +192,10 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
     return byArrow
   }, [layoutIssues])
   const isNested = parentId !== null
-  const canAdd = editing && blocks.length < MAX_BLOCKS_PER_LEVEL && !!findPlace(areas.values(), 1, 1)
+  // The opened block holds text, not blocks: its screen reads that text
+  const textBlock = parent?.details !== undefined ? parent : undefined
+  const isText = textBlock !== undefined
+  const canAdd = editing && !isText && blocks.length < MAX_BLOCKS_PER_LEVEL && !!findPlace(areas.values(), 1, 1)
 
   // The whole 6×6 grid, cells of one size filling the screen, the same when
   // viewing and editing, so nothing moves between the modes. Phones (viewing
@@ -426,6 +426,11 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
     drillIn(block, cardRect)
   }
 
+  function addTextAndDrillIn(block: Block, cardRect: CardRect) {
+    actions.makeText(block.id)
+    drillIn(block, cardRect)
+  }
+
   function goBack(depth: number) {
     if (depth >= livePath.length) return
     const toRect = livePath[livePath.length - 1]?.cardRect
@@ -491,12 +496,13 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
     const own = areas.get(dragId)
     const card = (e.target as HTMLElement).closest<HTMLElement>('[data-block-id]')
     const cardId = card?.dataset.blockId
-    if (card && cardId && cardId !== dragId && (index.get(cardId)?.block.children?.length ?? 0) < MAX_BLOCKS_PER_LEVEL) {
+    const target = cardId ? index.get(cardId)?.block : undefined
+    if (card && target && cardId !== dragId && target.details === undefined && (target.children?.length ?? 0) < MAX_BLOCKS_PER_LEVEL) {
       const r = card.getBoundingClientRect()
       const tx = (e.clientX - r.left) / r.width
       const ty = (e.clientY - r.top) / r.height
       if (tx > 0.25 && tx < 0.75 && ty > 0.25 && ty < 0.75) {
-        if (!(drop && 'inside' in drop && drop.inside === cardId)) setDrop({ inside: cardId })
+        if (!(drop && 'inside' in drop && drop.inside === target.id)) setDrop({ inside: target.id })
         return
       }
     }
@@ -589,6 +595,7 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
       onDescribe={actions.describe}
       onDelete={actions.remove}
       onAddChild={addChildAndDrillIn}
+      onAddText={addTextAndDrillIn}
       onDrillIn={drillIn}
       connectingFrom={connectingFrom}
       canLinkTo={canLinkTo(block.id)}
@@ -601,7 +608,6 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
       onDragStartBlock={(id, offset) => { dragOffset.current = offset; setDragId(id) }}
       onDragEndBlock={endDrag}
       onNudge={nudge}
-      onShowDetails={showDetails}
       selectable={grouping !== null}
       selected={grouping?.includes(block.id) ?? false}
       onToggleSelect={id => setGrouping(g => g && (g.includes(id) ? g.filter(x => x !== id) : [...g, id]))}
@@ -746,16 +752,15 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
               </div>
               {/* On the right, so entering edit mode leaves the grid its size */}
               <div className={styles.headerActions}>
-                {parent && (editing || parent.details?.trim()) && (
-                  <button
-                    className={styles.headerDetailsLink}
-                    onClick={e => showDetails(parent.id, e.currentTarget.getBoundingClientRect())}
-                    aria-label={`Details of ${parent.title}`}
-                  >
-                    {parent.details?.trim() ? 'Details' : 'Add details'}
+              {editing && textBlock && !textBlock.details?.trim() && (
+                // Only while empty: a block with text stays a text block
+                <div className={styles.levelTools} role="group" aria-label="Level tools">
+                  <button className={styles.groupBtn} onClick={() => actions.toBlocks(textBlock.id)}>
+                    <PlusIcon size={11} /> Blocks instead
                   </button>
-                )}
-              {editing && (
+                </div>
+              )}
+              {editing && !isText && (
                 <div className={styles.levelTools} role="group" aria-label="Level tools">
                   {canAdd && (
                     <button className={styles.groupBtn} onClick={() => actions.add(parentId)} aria-label="Add block">
@@ -790,7 +795,15 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
           )
         })()}
 
-        <div ref={gridAreaRef} className={`${styles.gridArea} ${isNested ? styles.gridAreaNested : ''}`}>
+        <div ref={gridAreaRef} className={`${styles.gridArea} ${isNested ? styles.gridAreaNested : ''} ${isText ? styles.gridAreaText : ''}`}>
+          {textBlock ? (
+            <TextLevel
+              key={textBlock.id}
+              block={textBlock}
+              editing={editing}
+              onChange={text => actions.setDetails(textBlock.id, text)}
+            />
+          ) : <>
           {/* The level's 6×6 grid: each block covers the cells its "at" names */}
           <div
             ref={gridRef}
@@ -879,20 +892,9 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
               />
             )
           })()}
+          </>}
         </div>
       </div>
-
-      {/* Outside the slide, so it is not zoomed or clipped with the level */}
-      {detailsBlock && details && (
-        <DetailsPanel
-          key={detailsBlock.id}
-          block={detailsBlock}
-          anchor={details.anchor}
-          editing={editing}
-          onChange={details => actions.setDetails(detailsBlock.id, details)}
-          onClose={closeDetails}
-        />
-      )}
     </div>
   )
 }

@@ -110,9 +110,10 @@ theme with the `theme` prop, or override variables through `className`:
   block's below it.
 - **Short screens**: a level taller than the space it has is shrunk to fit
   (down to 60%), instead of scrolling.
-- **Cards** show icon, title and description, and "N more inside" when the
-  block has children (direct children only). Click anywhere on such a card,
-  text included, to open it; selecting text to copy it does not open it.
+- **Cards** show icon, title and description, and what the block opens
+  into: "N more inside" when it has children (direct children only), "Read"
+  when it has text (`details`). Click anywhere on such a card, text included,
+  to open it; selecting text to copy it does not open it.
 - **Phones**: the level keeps its structure. Blocks of a third or a half show
   only icon, title and "N more inside"; the gaps between columns narrow.
 
@@ -121,9 +122,10 @@ theme with the `theme` prop, or override variables through `className`:
   one arrow labelled with their labels, or with the count when there are more
   than two. An arrow that stands for nested links is dashed.
 - **Directions**: `forward` has one arrowhead, `both` two, `none` none.
-- **Details**: a block with `details` gets a details button (on its card, and
-  in the header once opened) that opens a popup next to it, which can grow to
-  the whole view. `details` is Markdown,
+- **Text**: a block opens either into blocks or into text (`details`, never
+  both). Text opens like any level: the same zoom, the breadcrumb, the
+  block's title and full description on top, and the text below in a column
+  of reading width (about 70 characters). `details` is Markdown,
   a safe subset rendered without HTML: `#`–`###` headings, paragraphs, `-`/`1.`
   lists, fenced code, `**bold**`, `*italic*`, `` `code` ``, and links with
   `http(s)`/`mailto` URLs (other schemes are shown as plain text).
@@ -157,8 +159,10 @@ In edit mode you can:
 - edit links: click an arrow or its label to change the label and direction
   (one way, both ways, none), reverse or delete it. A merged arrow lists every
   link it stands for, with their real endpoints;
-- write details: the details button opens the panel with a Markdown editor
-  and a live preview;
+- choose what an empty block opens into: "add inside: blocks · text" on its
+  card. A text block's level edits the Markdown with a live preview; while
+  its text is empty, "Blocks instead" turns it back. A block with children
+  or with text keeps its kind;
 - resize blocks: drag the card's bottom-right corner, which snaps to the
   cells, or Shift + arrow keys on the focused handle.
 

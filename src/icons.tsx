@@ -25,36 +25,13 @@ export function ArrowRightIcon() {
   )
 }
 
-export function DetailsIcon() {
+/** Lines of text: a block that opens into text, beside the dots of one with blocks */
+export function TextIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+    <svg width="11" height="11" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
       <line x1="5" y1="6" x2="19" y2="6" />
       <line x1="5" y1="12" x2="19" y2="12" />
       <line x1="5" y1="18" x2="13" y2="18" />
-    </svg>
-  )
-}
-
-/** Grow to the whole viewer: corners pointing out */
-export function ExpandIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="14 4 20 4 20 10" />
-      <polyline points="10 20 4 20 4 14" />
-      <line x1="20" y1="4" x2="13" y2="11" />
-      <line x1="4" y1="20" x2="11" y2="13" />
-    </svg>
-  )
-}
-
-/** Back to the small popup: corners pointing in */
-export function CollapseIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="4 10 10 10 10 4" />
-      <polyline points="20 14 14 14 14 20" />
-      <line x1="10" y1="10" x2="3" y2="3" />
-      <line x1="14" y1="14" x2="21" y2="21" />
     </svg>
   )
 }

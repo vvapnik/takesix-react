@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { formatArea, type Area, type Block } from '@takesix/core'
-import { ArrowRightIcon, CrossIcon, DetailsIcon, PlusIcon } from './icons.js'
+import { ArrowRightIcon, CrossIcon, PlusIcon, TextIcon } from './icons.js'
 import styles from './BlockCard.module.css'
 
 export interface CardRect {
@@ -31,6 +31,8 @@ interface Props {
   onDescribe: (id: string, description: string) => void
   onDelete: (id: string) => void
   onAddChild: (block: Block, cardRect: CardRect) => void
+  /** Turns the empty block into a text block and opens it. */
+  onAddText: (block: Block, cardRect: CardRect) => void
   onDrillIn: (block: Block, cardRect: CardRect) => void
   connectingFrom: string | null
   /** While linking: this block may be the target (not the source, its ancestor or descendant). */
@@ -48,8 +50,6 @@ interface Props {
   onDragEndBlock: () => void
   /** Arrow keys on the drag handle: move by a cell, or with Shift grow or shrink the block. */
   onNudge: (id: string, dx: number, dy: number, resize: boolean) => void
-  /** Opens the details popup next to `anchor` (the control that was clicked). */
-  onShowDetails: (id: string, anchor: DOMRect) => void
   /** Choosing blocks to group: a click selects instead of opening. */
   selectable: boolean
   selected: boolean
@@ -62,19 +62,22 @@ interface Props {
 }
 
 export function BlockCard({
-  block, editing, onRename, onDescribe, onDelete, onAddChild, onDrillIn,
+  block, editing, onRename, onDescribe, onDelete, onAddChild, onAddText, onDrillIn,
   connectingFrom, canLinkTo, isConnected, onStartConnect, onConnectTarget, onRegisterEl,
-  area: placedArea, isDragged, isDropTarget, onDragStartBlock, onDragEndBlock, onNudge, onShowDetails,
+  area: placedArea, isDragged, isDropTarget, onDragStartBlock, onDragEndBlock, onNudge,
   selectable, selected, onToggleSelect, cellAt, canPlace, onPlace,
 }: Props) {
   // While the corner is being dragged: the area under the pointer
   const [preview, setPreview] = useState<Area | null>(null)
   const area = preview ?? placedArea
   const previewOk = !preview || canPlace(block.id, preview)
-  const hasDetails = !!block.details?.trim()
   // Direct children only: the counter tells what the next screen holds.
   const childCount = block.children?.length ?? 0
   const hasChildren = childCount > 0
+  // A text block opens into its text instead of blocks; an empty one only while editing
+  const isText = block.details !== undefined
+  const hasText = !!block.details?.trim()
+  const opens = hasChildren || (isText && (hasText || editing))
   const cardEl = useRef<HTMLDivElement>(null)
 
   // The card is draggable only while the handle is held, so text can still be
@@ -106,11 +109,11 @@ export function BlockCard({
     return { left: r.left, top: r.top, width: r.width, height: r.height }
   }
 
-  // A click anywhere on a card with children opens it, text included, except
+  // A click anywhere on a card that opens (children or text) opens it, text included, except
   // on its handles and, while editing, on the text being edited. A finished
   // text selection does not open it, so text can still be copied.
   function handleCardClick(e: React.MouseEvent) {
-    if (!hasChildren || !cardEl.current) return
+    if (!opens || !cardEl.current) return
     const keep = editing ? '[data-text], [data-drag-handle], [data-resize-handle]' : '[data-drag-handle], [data-resize-handle]'
     if ((e.target as HTMLElement).closest(keep)) return
     const selection = window.getSelection()
@@ -119,7 +122,7 @@ export function BlockCard({
   }
 
   let cardClass = styles.card
-  if (hasChildren && !isConnectable && !selectable) cardClass += ` ${styles.cardZoomable}`
+  if (opens && !isConnectable && !selectable) cardClass += ` ${styles.cardZoomable}`
   if (selected) cardClass += ` ${styles.cardSelected}`
   // A full-width single row reads like a list item
   if (area.width === 6 && area.height === 1) cardClass += ` ${styles.cardWide}`
@@ -224,18 +227,6 @@ export function BlockCard({
       )}
 
       {editing && (
-        // Editing: always, to add details. Viewing: the "Details" link below.
-        <button
-          className={`${styles.detailsBtn} ${hasDetails ? styles.detailsBtnFilled : ''}`}
-          onClick={e => { e.stopPropagation(); onShowDetails(block.id, e.currentTarget.getBoundingClientRect()) }}
-          aria-label={`Details of ${block.title}`}
-          title={hasDetails ? 'Details' : 'Add details'}
-        >
-          <DetailsIcon />
-        </button>
-      )}
-
-      {editing && (
         <button
           className={styles.deleteBtn}
           onClick={e => { e.stopPropagation(); onDelete(block.id) }}
@@ -287,7 +278,7 @@ export function BlockCard({
         </div>
       </div>
 
-      {/* Bottom line: what is inside on the left, the details on the right */}
+      {/* Bottom line: what the block opens into */}
       <div className={styles.footer}>
         {hasChildren && (
           // No handler of its own: the click bubbles to the card. The button keeps
@@ -297,29 +288,39 @@ export function BlockCard({
           </button>
         )}
 
-        {!hasChildren && editing && (
-          // Same place and look as "N more inside": a quiet line, not a box
-          <button
-            className={`${styles.inside} ${styles.addInside}`}
-            onClick={e => {
-              e.stopPropagation()
-              if (!cardEl.current) return
-              onAddChild(block, getCardRect())
-            }}
-            aria-label={`Add child to ${block.title}`}
-          >
-            <PlusIcon size={11} /> add inside
+        {isText && (hasText || editing) && (
+          // Same place and look as "N more inside": the block opens into text
+          <button className={`${styles.inside} ${styles.read}`} aria-label={`Read ${block.title}`}>
+            <TextIcon /> {hasText ? 'Read' : 'Empty text'}
           </button>
         )}
 
-        {hasDetails && !editing && (
-          <button
-            className={styles.detailsLink}
-            onClick={e => { e.stopPropagation(); onShowDetails(block.id, e.currentTarget.getBoundingClientRect()) }}
-            aria-label={`Details of ${block.title}`}
-          >
-            Details
-          </button>
+        {!hasChildren && !isText && editing && (
+          // An empty block becomes either kind: a quiet line, not a box
+          <span className={`${styles.inside} ${styles.addInside}`}>
+            <PlusIcon size={11} /> add inside:
+            <button
+              className={styles.addChoice}
+              onClick={e => {
+                e.stopPropagation()
+                if (cardEl.current) onAddChild(block, getCardRect())
+              }}
+              aria-label={`Add blocks inside ${block.title}`}
+            >
+              blocks
+            </button>
+            <span aria-hidden="true">·</span>
+            <button
+              className={styles.addChoice}
+              onClick={e => {
+                e.stopPropagation()
+                if (cardEl.current) onAddText(block, getCardRect())
+              }}
+              aria-label={`Add text inside ${block.title}`}
+            >
+              text
+            </button>
+          </span>
         )}
       </div>
     </div>

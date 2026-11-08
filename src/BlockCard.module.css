@@ -462,6 +462,8 @@
 
 .card[data-shape] .header {
   justify-content: center;
+  /* also when the phone layout stacks the icon above the title */
+  align-items: center;
 }
 
 .card[data-shape] .headerText {

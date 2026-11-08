@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { formatArea, type Area, type Block } from '@takesix/core'
+import { SHAPE_NAMES, ShapeGlyph } from './ShapeMenu.js'
 import { ArrowRightIcon, CrossIcon, PlusIcon, TextIcon } from './icons.js'
 import styles from './BlockCard.module.css'
 
@@ -29,6 +30,8 @@ interface Props {
   editing: boolean
   onRename: (id: string, title: string) => void
   onDescribe: (id: string, description: string) => void
+  /** Opens the shape picker under `button` (its screen rect). */
+  onOpenShapes: (id: string, button: DOMRect) => void
   onDelete: (id: string) => void
   onAddChild: (block: Block, cardRect: CardRect) => void
   /** Turns the empty block into a text block and opens it. */
@@ -62,7 +65,7 @@ interface Props {
 }
 
 export function BlockCard({
-  block, editing, onRename, onDescribe, onDelete, onAddChild, onAddText, onDrillIn,
+  block, editing, onRename, onDescribe, onOpenShapes, onDelete, onAddChild, onAddText, onDrillIn,
   connectingFrom, canLinkTo, isConnected, onStartConnect, onConnectTarget, onRegisterEl,
   area: placedArea, isDragged, isDropTarget, onDragStartBlock, onDragEndBlock, onNudge,
   selectable, selected, onToggleSelect, cellAt, canPlace, onPlace,
@@ -79,6 +82,10 @@ export function BlockCard({
   const hasText = !!block.details?.trim()
   const opens = hasChildren || (isText && (hasText || editing))
   const cardEl = useRef<HTMLDivElement>(null)
+  // Flowchart symbol; a plain card is a process
+  const shape = block.shape && block.shape !== 'process' ? block.shape : undefined
+  // Outlines CSS borders cannot draw: a layer clipped to the symbol
+  const outlined = shape === 'decision' || shape === 'io' || shape === 'loop-start' || shape === 'loop-end'
 
   // The card is draggable only while the handle is held, so text can still be
   // selected and edited by dragging inside the card.
@@ -140,6 +147,7 @@ export function BlockCard({
       ref={cardEl}
       data-block-id={block.id}
       data-at={formatArea(area)}
+      data-shape={shape}
       // Phone width hides the description of blocks half the grid wide or narrower
       data-compact={area.width <= 3 || undefined}
       data-drop={isDropTarget ? 'inside' : undefined}
@@ -155,6 +163,8 @@ export function BlockCard({
       }}
       onDragEnd={() => { setArmed(false); onDragEndBlock() }}
     >
+      {outlined && <div className={styles.outline} aria-hidden="true" />}
+
       {editing && (
         // Bottom-right corner: drag to resize, snapping to the grid cells
         <div
@@ -233,6 +243,19 @@ export function BlockCard({
           aria-label={`Delete ${block.title}`}
         >
           <CrossIcon />
+        </button>
+      )}
+
+      {editing && (
+        // The block's flowchart symbol: opens the picker
+        <button
+          className={styles.shapeBtn}
+          onClick={e => { e.stopPropagation(); onOpenShapes(block.id, e.currentTarget.getBoundingClientRect()) }}
+          aria-label={`Shape of ${block.title}: ${SHAPE_NAMES[block.shape ?? 'process']}`}
+          aria-haspopup="dialog"
+          title={`Shape: ${SHAPE_NAMES[block.shape ?? 'process']}`}
+        >
+          <ShapeGlyph shape={block.shape ?? 'process'} />
         </button>
       )}
 

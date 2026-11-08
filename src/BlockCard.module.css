@@ -135,15 +135,6 @@
   opacity: 0.45;
 }
 
-/* While linking, "N more inside" stays above the overlay: open a block to
-   link to something deeper. */
-.cardConnectable .inside,
-.cardConnected .inside {
-  position: relative;
-  z-index: 6;
-  cursor: zoom-in;
-}
-
 .selectOverlay {
   cursor: pointer;
 }
@@ -184,9 +175,37 @@
   padding-left: 18px;
 }
 
-/* ...and for the connect and delete buttons in the top right corner */
+/* ...and for the shape, connect and delete buttons in the top right corner */
 .cardEditing .header {
-  padding-right: 64px;
+  padding-right: 90px;
+}
+
+/* Shape picker button: the outline of the block's symbol */
+.shapeBtn {
+  all: unset;
+  position: absolute;
+  top: 8px;
+  right: 60px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--ts-icon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  z-index: 2;
+}
+
+.shapeBtn:hover {
+  background: var(--ts-accent-soft);
+  color: var(--ts-accent);
+}
+
+.shapeBtn:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: 1px;
 }
 
 .addInside {
@@ -431,3 +450,154 @@
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+
+/* ── Flowchart symbols (ISO 5807), within the block's cells ───────────── */
+
+/* Flowchart symbols hold their text in the middle, like the standard draws them */
+.card[data-shape] {
+  justify-content: center;
+  text-align: center;
+}
+
+.card[data-shape] .header {
+  justify-content: center;
+}
+
+.card[data-shape] .headerText {
+  align-items: center;
+}
+
+.card[data-shape] .footer {
+  margin-top: 0;
+  justify-content: center;
+}
+
+/* Terminator: start or end, a card with round ends */
+.card[data-shape='terminator'] {
+  border-radius: 999px;
+}
+
+/* Room for the round ends, less on narrow cards so words are not broken */
+.card[data-shape='terminator'] .header,
+.card[data-shape='terminator'] .footer {
+  padding-left: clamp(8px, 12%, 28px);
+  padding-right: clamp(8px, 12%, 28px);
+}
+
+/* Subprocess (predefined process): a second line inside each side */
+.card[data-shape='subprocess']::before,
+.card[data-shape='subprocess']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ts-border-strong);
+  pointer-events: none;
+}
+
+.card[data-shape='subprocess']::before { left: 8px; }
+.card[data-shape='subprocess']::after { right: 8px; }
+
+.card[data-shape='subprocess'] .header,
+.card[data-shape='subprocess'] .footer {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.card[data-shape='subprocess'].cardEditing::before { left: 26px; }
+
+/* Symbols a border cannot draw: the card itself is invisible and the outline
+   layer, clipped to the symbol, draws the line (::before) and the fill
+   (::after, 1px inside). The drop shadow sits on the unclipped layer. */
+.card:is([data-shape='decision'], [data-shape='io'], [data-shape='loop-start'], [data-shape='loop-end']) {
+  --ts-shape-line: var(--ts-border);
+  --ts-shape-fill: var(--ts-surface);
+  --ts-io-skew: 14px;
+  --ts-loop-cut: 12px;
+  background: transparent;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  overflow: visible;
+}
+
+.outline {
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+  transition: filter 0.2s;
+}
+
+.outline::before,
+.outline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: var(--ts-shape);
+  background: var(--ts-shape-line);
+  transition: background 0.2s;
+}
+
+.outline::after {
+  inset: 1px;
+  background: var(--ts-shape-fill);
+}
+
+.card:is([data-shape='decision'], [data-shape='io'], [data-shape='loop-start'], [data-shape='loop-end']) > :is(.header, .footer) {
+  position: relative;
+}
+
+.card[data-shape='decision'] { --ts-shape: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.card[data-shape='io'] {
+  --ts-shape: polygon(var(--ts-io-skew) 0, 100% 0, calc(100% - var(--ts-io-skew)) 100%, 0 100%);
+}
+.card[data-shape='loop-start'] {
+  --ts-shape: polygon(var(--ts-loop-cut) 0, calc(100% - var(--ts-loop-cut)) 0, 100% var(--ts-loop-cut),
+    100% 100%, 0 100%, 0 var(--ts-loop-cut));
+}
+.card[data-shape='loop-end'] {
+  --ts-shape: polygon(0 0, 100% 0, 100% calc(100% - var(--ts-loop-cut)), calc(100% - var(--ts-loop-cut)) 100%,
+    var(--ts-loop-cut) 100%, 0 calc(100% - var(--ts-loop-cut)));
+}
+
+/* States that colour a card's border colour the symbol's line instead */
+.card[data-shape]:hover { --ts-shape-line: var(--ts-border-strong); }
+.card[data-shape]:hover .outline { filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1)); }
+.card[data-shape]:is(.cardSelected, .cardConnectingSource, .cardConnected, .cardResizing),
+.card[data-shape].cardConnectable:hover { --ts-shape-line: var(--ts-accent); }
+.card[data-shape].cardResizingBad { --ts-shape-line: var(--ts-danger); }
+.card[data-shape][data-drop='inside'] { background: transparent; --ts-shape-fill: var(--ts-accent-soft); }
+
+/* Decision: the text sits in the middle of the diamond, which leaves it about
+   half the card's width; the description ends in "…" sooner */
+.card[data-shape='decision'] {
+  min-height: 72px;
+  padding: 14px 22%;
+}
+
+.card[data-shape='decision'] .header {
+  padding: 0;
+  gap: 6px;
+}
+
+.card[data-shape='decision'] .footer {
+  margin-top: 2px;
+  padding: 0;
+}
+
+.card[data-shape='decision'].cardEditing .header {
+  padding-right: 0;
+}
+
+/* Data in or out: text clear of the slanted sides */
+.card[data-shape='io'] .header,
+.card[data-shape='io'] .footer {
+  padding-left: calc(16px + var(--ts-io-skew));
+  padding-right: calc(16px + var(--ts-io-skew));
+}
+
+/* Loop limits: a little more room by the cut corners */
+.card[data-shape='loop-start'] .header { padding-top: 16px; }
+.card[data-shape='loop-end'] .footer { padding-bottom: 14px; }

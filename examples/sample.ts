@@ -175,8 +175,6 @@ export const sample: TakeSixDocument = {
     { id: 'agents-format', from: 'agents', to: 'format' },
     { id: 'format-core', from: 'format', to: 'core' },
     { id: 'core-react', from: 'core', to: 'react' },
-    // Nested on both ends: shows up as core → react on the top level
-    { id: 'visible-viewer', from: 'core-visible', to: 'react-viewer' },
     { id: 'parse-edit', from: 'core-parse', to: 'core-edit' },
     { id: 'grid-edit', from: 'core-grid', to: 'core-edit' },
     { id: 'grid-layout', from: 'core-grid', to: 'core-layout' },

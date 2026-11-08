@@ -14,6 +14,7 @@ import {
   visibleLinks,
   type Area,
   type Block,
+  type BlockShape,
   type Link,
   type TakeSixDocument,
   type VisibleLink,
@@ -22,6 +23,7 @@ import { BlockCard, areaStyle, type CardRect, type Cell } from './BlockCard.js'
 import { HEAD_LENGTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
 import { fitZoom } from './fit.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
+import { ShapeMenu } from './ShapeMenu.js'
 import { TextLevel } from './TextLevel.js'
 import { PlusIcon } from './icons.js'
 import styles from './Viewer.module.css'
@@ -46,6 +48,8 @@ export interface ViewerActions {
   removeLink: (link: Link) => void
   /** Saves the Markdown text of a text block (one that opens into `details`). */
   setDetails: (id: string, details: string) => void
+  /** Draws a block as a flowchart symbol; `'process'` is the plain card. */
+  setShape: (id: string, shape: BlockShape) => void
   /** Turns an empty block into a text block: it then opens into text, not blocks. */
   makeText: (id: string) => void
   /** Turns an empty text block back into one that holds blocks, and adds the first. */
@@ -72,6 +76,12 @@ interface Arrow extends ArrowPath {
   link: VisibleLink
   label?: string
 }
+
+/** Space between a vertical arrow and its label. */
+const LABEL_GAP = 8
+
+/** Rough width of a label character (11px, medium weight). */
+const LABEL_CHAR = 6.5
 
 function arrowLabel(link: VisibleLink): string | undefined {
   const labels = [...new Set(link.links.map(l => l.label).filter((l): l is string => !!l))]
@@ -145,6 +155,15 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
   // Arrow whose links are being edited, by its pair of blocks (see pairKey)
   const [openArrow, setOpenArrow] = useState<string | null>(null)
   const closeArrow = useCallback(() => setOpenArrow(null), [])
+  // Shape picker of one block: where it opens, relative to the level's area
+  const [shapeMenu, setShapeMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const closeShapes = useCallback(() => setShapeMenu(null), [])
+  const openShapes = useCallback((id: string, button: DOMRect) => {
+    const area = gridAreaRef.current?.getBoundingClientRect()
+    if (!area) return
+    setOpenArrow(null)
+    setShapeMenu({ id, x: button.right - area.left, y: button.bottom - area.top })
+  }, [])
   const [drop, setDrop] = useState<DropTarget | null>(null)
   // Where the dragged card was grabbed, from its top-left corner
   const dragOffset = useRef({ x: 0, y: 0 })
@@ -275,11 +294,16 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
       setConnectingFrom(null)
       setOpenArrow(null)
       setGrouping(null)
+      setShapeMenu(null)
     }
   }, [editing])
 
-  // Grouping is about one level: leaving it cancels
-  useEffect(() => setGrouping(null), [parentId])
+  // Grouping and linking are about one level: leaving it cancels
+  useEffect(() => {
+    setGrouping(null)
+    setConnectingFrom(null)
+    setShapeMenu(null)
+  }, [parentId])
 
   // Close the link editor when its arrow goes away (level changed, links deleted)
   useEffect(() => {
@@ -321,6 +345,7 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
         })),
         rects,
         toRect(container.getBoundingClientRect()),
+        new Map(blocks.flatMap(b => (b.shape === 'decision' || b.shape === 'io' ? [[b.id, b.shape] as const] : []))),
       ))
     }
 
@@ -398,14 +423,14 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
     })
   }, [arrowPaths, links])
 
-  // While linking, the target may sit on any level, except the source's own
-  // ancestors and descendants: such a link would never be visible.
+  // While linking, the target is another block of the same level: links
+  // across levels are never drawn.
   const canLinkTo = useCallback((id: string) => {
     if (!connectingFrom || id === connectingFrom) return false
     const source = index.get(connectingFrom)
     const target = index.get(id)
     if (!source || !target) return false
-    return !source.path.includes(id) && !target.path.includes(connectingFrom)
+    return source.parentId === target.parentId
   }, [connectingFrom, index])
   const linkSource = connectingFrom ? index.get(connectingFrom)?.block : undefined
 
@@ -593,6 +618,7 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
       editing={editing}
       onRename={actions.rename}
       onDescribe={actions.describe}
+      onOpenShapes={openShapes}
       onDelete={actions.remove}
       onAddChild={addChildAndDrillIn}
       onAddText={addTextAndDrillIn}
@@ -692,7 +718,7 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
       {linkSource && (
         <div className={styles.linkBar} role="status">
           <span>
-            Linking from <strong>{linkSource.title}</strong>: click a block on any level
+            Linking from <strong>{linkSource.title}</strong>: click another block
           </span>
           <button className={styles.linkBarCancel} onClick={() => setConnectingFrom(null)}>Cancel</button>
         </div>
@@ -854,23 +880,32 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
                   )}
                   <path
                     d={a.d}
-                    className={`${styles.arrow} ${a.link.direct ? '' : styles.arrowIndirect} ${warnings ? styles.arrowWarn : ''}`}
+                    className={`${styles.arrow} ${a.link.style === 'solid' ? '' : styles[a.link.style]} ${warnings ? styles.arrowWarn : ''}`}
                     markerEnd={a.link.direction !== 'none' ? head : undefined}
                     markerStart={a.link.direction === 'both' ? head : undefined}
                   />
-                  {a.label && (
-                    // Vertical arrows often cross a narrow gap between rows: label beside the arrow.
+                  {a.label && (() => {
+                    // Vertical arrows often cross a narrow gap between rows: label beside
+                    // the arrow. A detour on the left has the cards on its right: label
+                    // outside it, or on the line itself when the level's edge is too close.
+                    const room = a.mid.x - LABEL_GAP
+                    const anchor = !a.vertical ? 'middle'
+                      : !a.detourLeft ? 'start'
+                      : room >= a.label.length * LABEL_CHAR ? 'end' : 'middle'
+                    const x = anchor === 'start' ? a.mid.x + LABEL_GAP : anchor === 'end' ? a.mid.x - LABEL_GAP : a.mid.x
+                    return (
                     <text
-                      x={a.vertical ? a.mid.x + 8 : a.mid.x}
+                      x={x}
                       y={a.mid.y}
                       className={`${styles.arrowLabel} ${openArrow === pairKey(a.link) ? styles.arrowLabelOpen : ''}`}
                       onClick={editing ? e => { e.stopPropagation(); setOpenArrow(pairKey(a.link)) } : undefined}
-                      textAnchor={a.vertical ? 'start' : 'middle'}
+                      textAnchor={anchor}
                       dominantBaseline="middle"
                     >
                       {a.label}
                     </text>
-                  )}
+                    )
+                  })()}
                 </g>
                 )
               })}
@@ -889,6 +924,19 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
                 onUpdate={actions.updateLink}
                 onRemove={actions.removeLink}
                 onClose={closeArrow}
+              />
+            )
+          })()}
+          {(() => {
+            const block = editing && shapeMenu && blocks.find(b => b.id === shapeMenu.id)
+            if (!block || !shapeMenu) return null
+            return (
+              <ShapeMenu
+                value={block.shape ?? 'process'}
+                x={shapeMenu.x}
+                y={shapeMenu.y}
+                onPick={shape => actions.setShape(block.id, shape)}
+                onClose={closeShapes}
               />
             )
           })()}

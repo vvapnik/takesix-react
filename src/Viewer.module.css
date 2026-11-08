@@ -219,8 +219,15 @@
   font-weight: 700;
 }
 
-.arrowIndirect {
-  stroke-dasharray: 6 4;
+/* Link styles: a dashed or dotted line */
+.dashed {
+  stroke-dasharray: 7 5;
+}
+
+.dotted {
+  stroke-dasharray: 0 5;
+  stroke-linecap: round;
+  stroke-width: 2.5;
 }
 
 .arrowHead {
@@ -282,10 +289,13 @@
   grid-template-rows: var(--ts-rows-full);
   /* room for a short arrow between neighbours; empty cells make more room */
   column-gap: 28px;
-  /* room for a short arrow between rows */
-  row-gap: 8px;
+  /* room for an arrow between rows, with its head and label */
+  row-gap: 24px;
   align-content: space-evenly;
   min-height: 0;
+  /* room beside the outer columns for an arrow going around blocks (the way
+     back of a loop) and its label; less on narrower levels */
+  margin-inline: clamp(24px, 4cqi, 56px);
 }
 
 /* Cards stay within their cells; the fit zoom deals with what does not fit */
@@ -299,6 +309,7 @@
 @container ts-level (max-width: 560px) {
   .grid {
     column-gap: 8px;
+    margin-inline: 28px;
   }
   .grid:not(.gridEditing) {
     --ts-empty-col: 0px;

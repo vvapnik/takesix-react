@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Link, LinkDirection } from '@takesix/core'
+import type { Link, LinkDirection, LinkStyle } from '@takesix/core'
 import { CrossIcon } from './icons.js'
 import styles from './LinkPopover.module.css'
 
 /** Changes to one link. A key set to `undefined` removes that field. */
-export type LinkEdit = Partial<Pick<Link, 'from' | 'to' | 'label' | 'direction'>>
+export type LinkEdit = Partial<Pick<Link, 'from' | 'to' | 'label' | 'direction' | 'style'>>
 
 interface Props {
   /** The document links one arrow stands for: usually one, several when merged. */
@@ -24,7 +24,22 @@ const DIRECTIONS: Array<{ value: LinkDirection; symbol: string; label: string }>
   { value: 'none', symbol: '—', label: 'No direction' },
 ]
 
-/** Edits the links behind one arrow: label, direction, reverse, delete. */
+const STYLES: Array<{ value: LinkStyle; dash?: string; label: string }> = [
+  { value: 'solid', label: 'Solid line' },
+  { value: 'dashed', dash: '4 3', label: 'Dashed line' },
+  { value: 'dotted', dash: '0 3.5', label: 'Dotted line' },
+]
+
+/** A short sample of a line style, for its button. */
+function LineSample({ dash }: { dash?: string }) {
+  return (
+    <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">
+      <path d="M 2 5 H 20" stroke="currentColor" strokeWidth="2" strokeDasharray={dash} strokeLinecap={dash?.startsWith('0') ? 'round' : undefined} />
+    </svg>
+  )
+}
+
+/** Edits the links behind one arrow: label, direction, line style, reverse, delete. */
 export function LinkPopover({ links, x, y, titleOf, onUpdate, onRemove, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -77,6 +92,7 @@ function LinkRow({ link, titleOf, onUpdate, onRemove }: {
   const [label, setLabel] = useState(link.label ?? '')
   useEffect(() => setLabel(link.label ?? ''), [link.label])
   const direction = link.direction ?? 'forward'
+  const style = link.style ?? 'solid'
 
   function commitLabel() {
     const next = label.trim()
@@ -125,6 +141,23 @@ function LinkRow({ link, titleOf, onUpdate, onRemove }: {
         <button className={`${styles.btn} ${styles.danger}`} onClick={onRemove} aria-label="Delete link" title="Delete link">
           Delete
         </button>
+      </div>
+      <div className={styles.actions}>
+        <div className={styles.directions} role="group" aria-label="Line">
+          {STYLES.map(s => (
+            <button
+              key={s.value}
+              className={`${styles.btn} ${style === s.value ? styles.btnActive : ''}`}
+              aria-pressed={style === s.value}
+              aria-label={s.label}
+              title={s.label}
+              // solid is the default: store it by dropping the field
+              onClick={() => onUpdate({ style: s.value === 'solid' ? undefined : s.value })}
+            >
+              <LineSample dash={s.dash} />
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )

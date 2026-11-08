@@ -62,6 +62,9 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
         // An empty title is invalid in the format: keep the old one.
         if (trimmed) commit(updateBlock(doc, id, { title: trimmed }))
       },
+      setShape(id, shape) {
+        commit(updateBlock(doc, id, { shape: shape === 'process' ? undefined : shape }))
+      },
       describe(id, description) {
         commit(updateBlock(doc, id, { description: description.trim() || undefined }))
       },

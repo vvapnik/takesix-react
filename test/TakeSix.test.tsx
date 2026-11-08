@@ -373,33 +373,18 @@ describe('TakeSix (editing)', () => {
     expect(crumbs()).toEqual([])
   })
 
-  it('links blocks on different levels', async () => {
+  it('links blocks of one level only: leaving the level stops linking', async () => {
     const { user, latest } = renderEditable()
     await user.click(screen.getByRole('button', { name: 'Connect from Database' }))
     expect(screen.getByRole('status')).toHaveTextContent('Linking from Database')
-
-    // open API while linking, then pick a block inside it
     await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
     expect(crumbs()).toEqual(['Shop', 'API'])
-    await user.click(screen.getByRole('button', { name: 'Connect to Auth' }))
-
-    expect(latest.doc.links?.map(l => [l.from, l.to])).toEqual([['web', 'api'], ['db', 'auth']])
     expect(screen.queryByRole('status')).toBeNull()
-  })
 
-  it('does not offer a block\'s ancestors or descendants as link targets', async () => {
-    const { user } = renderEditable()
-    await user.click(screen.getByRole('button', { name: 'Zoom into API' }))
     await user.click(screen.getByRole('button', { name: 'Connect from Auth' }))
-    await user.click(screen.getByRole('button', { name: 'Shop' }))
-    await act(() => new Promise(r => setTimeout(r, 400)))
-
     expect(screen.getByRole('status')).toHaveTextContent('Linking from Auth')
-    expect(screen.getByRole('button', { name: 'Connect to Web app' })).toBeInTheDocument()
-    // API contains Auth: not a target
-    expect(screen.queryByRole('button', { name: 'Connect to API' })).toBeNull()
-
-    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: 'Connect to Orders' }))
+    expect(latest.doc.links?.map(l => [l.from, l.to])).toEqual([['web', 'api'], ['auth', 'orders']])
     expect(screen.queryByRole('status')).toBeNull()
   })
 
@@ -408,15 +393,15 @@ describe('TakeSix (editing)', () => {
       takesix: '1.0',
       title: 'Row',
       blocks: [
-        { id: 'a', title: 'A', at: 'A1:B1' },
-        { id: 'b', title: 'B', at: 'C1:D1' },
-        { id: 'c', title: 'C', at: 'E1:F1' },
+        { id: 'a', title: 'A', at: 'A1' },
+        { id: 'b', title: 'B', at: 'B2' },
+        { id: 'c', title: 'C', at: 'C3' },
       ],
       links: [{ id: 'l', from: 'a', to: 'c' }],
     }
     // Arrows are routed from card rects: give the cards some in jsdom
     const rects: Record<string, DOMRect> = {
-      a: new DOMRect(0, 0, 100, 60), b: new DOMRect(200, 0, 100, 60), c: new DOMRect(400, 0, 100, 60),
+      a: new DOMRect(0, 0, 100, 60), b: new DOMRect(150, 100, 100, 60), c: new DOMRect(300, 200, 100, 60),
     }
     const original = HTMLElement.prototype.getBoundingClientRect
     HTMLElement.prototype.getBoundingClientRect = function () {
@@ -466,6 +451,12 @@ describe('TakeSix (editing)', () => {
       // reverse only makes sense one way
       expect(within(dialog).getByRole('button', { name: 'Reverse' })).toBeDisabled()
 
+      await user.click(within(dialog).getByRole('button', { name: 'Dashed line' }))
+      expect(link().style).toBe('dashed')
+      expect(document.querySelector('[data-link="web|api"] path:not([role])')!.getAttribute('class')).toMatch(/dashed/)
+      await user.click(within(dialog).getByRole('button', { name: 'Solid line' }))
+      expect(link()).not.toHaveProperty('style')
+
       await user.click(within(dialog).getByRole('button', { name: 'One way' }))
       expect(link()).not.toHaveProperty('direction')
       await user.click(within(dialog).getByRole('button', { name: 'Reverse' }))
@@ -477,6 +468,28 @@ describe('TakeSix (editing)', () => {
     } finally {
       HTMLElement.prototype.getBoundingClientRect = original
     }
+  })
+
+  it('changes the shape of a block from their outlines, plain card back included', async () => {
+    const { user, latest } = renderEditable()
+    await user.click(screen.getByRole('button', { name: 'Shape of Database: Process' }))
+    const menu = screen.getByRole('dialog', { name: 'Shape' })
+    expect(within(menu).getByRole('radio', { name: 'Process' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(menu).getAllByRole('radio')).toHaveLength(7)
+
+    await user.click(within(menu).getByRole('radio', { name: 'Decision' }))
+    expect(latest.doc.blocks[2]!.shape).toBe('decision')
+    expect(document.querySelector('[data-block-id="db"]')).toHaveAttribute('data-shape', 'decision')
+    expect(screen.queryByRole('dialog', { name: 'Shape' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Shape of Database: Decision' }))
+    await user.click(screen.getByRole('radio', { name: 'Process' }))
+    expect(latest.doc.blocks[2]).not.toHaveProperty('shape')
+
+    // Esc closes without a change
+    await user.click(screen.getByRole('button', { name: 'Shape of Database: Process' }))
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Shape' })).toBeNull()
   })
 
   it('does not offer link editing outside edit mode', () => {

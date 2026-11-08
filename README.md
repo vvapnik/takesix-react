@@ -117,11 +117,20 @@ theme with the `theme` prop, or override variables through `className`:
 - **Phones**: the level keeps its structure. Blocks of a third or a half show
   only icon, title and "N more inside"; the gaps between columns narrow.
 
-- **Arrows**: a link between nested blocks is drawn between their ancestors on
-  the current screen. Several links between the same pair of blocks merge into
-  one arrow labelled with their labels, or with the count when there are more
-  than two. An arrow that stands for nested links is dashed.
+- **Arrows**: a link is drawn on the screen of the level both its blocks are
+  on; links between blocks of different levels are not drawn. Several links
+  between the same pair of blocks merge into one arrow labelled with their
+  labels, or with the count when there are more than two. A straight arrow
+  with a card in its way goes around it with right-angled turns: below the
+  cards of a row, beside the cards of a column (the way back of a loop), on
+  the side that stays clear of other cards.
 - **Directions**: `forward` has one arrowhead, `both` two, `none` none.
+  **Styles**: `solid`, `dashed` or `dotted` line.
+- **Flowcharts**: `shape` draws a block as an ISO 5807 symbol within its
+  cells: `terminator` (round ends), `decision` (diamond, its text in the
+  middle half), `io` (parallelogram), `subprocess` (double sides),
+  `loop-start` and `loop-end` (cut corners). Their text is centred. Arrows
+  meet a diamond at its corners.
 - **Text**: a block opens either into blocks or into text (`details`, never
   both). Text opens like any level: the same zoom, the breadcrumb, the
   block's title and full description on top, and the text below in a column
@@ -141,7 +150,9 @@ theme with the `theme` prop, or override variables through `className`:
 
 In edit mode you can:
 
-- rename blocks and edit descriptions in place;
+- rename blocks and edit descriptions in place; pick a block's flowchart
+  symbol from their outlines with the button in its top right corner (arrow
+  keys move between them, Esc closes);
 - add and delete blocks: "Add block" in the toolbar puts one in the first free
   place, a click on an empty cell of the grid puts it there; a level stops
   offering "add" at 6 blocks or when the grid is full;
@@ -153,11 +164,12 @@ In edit mode you can:
   arrow keys; drop on the middle of another card to move the block inside it,
   or on a breadcrumb to move it up to that level;
 - link blocks: press the arrow button on the source, then click the target.
-  The target may be on any level: while linking, open blocks ("N more inside")
-  or go back up to find it. A block's own ancestors and descendants cannot be
-  targets. Clicking a linked target removes the link; Esc or Cancel stops;
-- edit links: click an arrow or its label to change the label and direction
-  (one way, both ways, none), reverse or delete it. A merged arrow lists every
+  The target is another block of the same level; opening a block or going
+  back up stops linking. Clicking a linked target removes the link; Esc or
+  Cancel stops;
+- edit links: click an arrow or its label to change the label, direction
+  (one way, both ways, none) and line (solid, dashed, dotted), reverse or
+  delete it. A merged arrow lists every
   link it stands for, with their real endpoints;
 - choose what an empty block opens into: "add inside: blocks · text" on its
   card. A text block's level edits the Markdown with a live preview; while

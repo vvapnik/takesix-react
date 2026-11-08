@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bezierMid, determineEdges, routeArrows, type Rect } from '../src/geometry.js'
+import { bezierMid, determineEdges, IO_SKEW, routeArrows, type Rect } from '../src/geometry.js'
 
 function rect(left: number, top: number, width = 100, height = 60): Rect {
   return { left, top, width, height, right: left + width, bottom: top + height }
@@ -24,7 +24,15 @@ describe('determineEdges', () => {
   })
 
   it('goes around a card standing in between', () => {
-    expect(determineEdges(rect(0, 0), rect(400, 0), [rect(200, 0)])).toEqual({ exitEdge: 'bottom', entryEdge: 'bottom' })
+    // below the cards of a row
+    expect(determineEdges(rect(0, 0), rect(400, 0), [rect(200, 0)])).toEqual({ exitEdge: 'bottom', entryEdge: 'bottom', lane: 80 })
+    // beside the cards of a column: the way back of a loop, past a body that
+    // sticks out on the right, so the left is shorter
+    expect(determineEdges(rect(100, 200), rect(100, 0), [rect(100, 100, 150)]))
+      .toEqual({ exitEdge: 'left', entryEdge: 'left', lane: 80 })
+    // on the side with no other card in the way
+    expect(determineEdges(rect(100, 200), rect(100, 0), [rect(100, 100), rect(-50, 0, 100, 260)]))
+      .toEqual({ exitEdge: 'right', entryEdge: 'right', lane: 220 })
   })
 
   it('connects stacked cards through top and bottom', () => {
@@ -100,5 +108,27 @@ describe('routeArrows', () => {
     )
     const startY = (d: string) => Number(d.split(' ')[2])
     expect(startY(ab!.d)).not.toBe(startY(ac!.d))
+  })
+})
+
+describe('routeArrows (shapes and detours)', () => {
+  it('reaches a diamond at its corners and a parallelogram at its slanted side', () => {
+    const rects = new Map([['q', rect(0, 0, 200, 60)], ['a', rect(400, 20, 100, 100)], ['b', rect(0, 200, 400, 60)]])
+    const shapes = new Map([['q', 'decision' as const], ['a', 'io' as const]])
+    const [right, down] = routeArrows(
+      [{ key: 'q|a', fromId: 'q', toId: 'a' }, { key: 'q|b', fromId: 'q', toId: 'b' }], rects, container, shapes)
+    // out of the right corner, at the diamond's middle height, not the shared rows
+    expect(right!.d.startsWith('M 200 30 ')).toBe(true)
+    expect(right!.d.endsWith(` ${400 + IO_SKEW / 2} 30`)).toBe(true)
+    // out of the bottom corner
+    expect(down!.d.startsWith('M 100 60 ')).toBe(true)
+  })
+
+  it('draws a detour as straight lines with rounded corners', () => {
+    const rects = new Map([['end', rect(100, 200)], ['start', rect(100, 0)], ['body', rect(50, 100, 200)], ['side', rect(-50, 0, 100, 60)]])
+    const [arrow] = routeArrows([{ key: 'end|start', fromId: 'end', toId: 'start', headAtEnd: true }], rects, container)
+    expect(arrow!.d).toMatch(/^M 200 230 L 260 230 Q 270 230 270 220 L 270 40 Q 270 30 260 30 L 214 30$/)
+    expect(arrow!.mid).toEqual({ x: 270, y: 130 })
+    expect(arrow!.vertical).toBe(true)
   })
 })

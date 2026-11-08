@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createDocument, formatIssues, parseDocument, serializeDocument, type TakeSixDocument } from '@takesix/core'
-import { TakeSix, type Theme } from '../src'
+import { PRELOADER_HTML, TakeSix, type Theme } from '../src'
 import { sample } from './sample'
 // Inlined so the logo takes the text colour (it draws with currentColor)
 import logoSvg from './takesix-logo.svg?raw'
@@ -104,6 +104,8 @@ export function App() {
 
       <main className={styles.main}>
         {doc && <TakeSix key={version} document={doc} onChange={setDoc} editing={editing} theme={theme} />}
+        {/* ?src is loading: the same screen the page showed before the script ran */}
+        {!doc && !error && <div className={styles.loading} dangerouslySetInnerHTML={{ __html: PRELOADER_HTML }} />}
       </main>
     </div>
   )

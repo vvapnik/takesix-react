@@ -155,3 +155,8 @@
   min-width: 92px;
   justify-content: center;
 }
+
+/* The loading screen fills the space the diagram will take */
+.loading {
+  height: 100%;
+}

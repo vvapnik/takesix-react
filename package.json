@@ -10,6 +10,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./preloader": {
+      "types": "./dist/preloader.d.ts",
+      "import": "./dist/preloader.js"
+    },
     "./style.css": "./dist/style.css"
   },
   "files": [

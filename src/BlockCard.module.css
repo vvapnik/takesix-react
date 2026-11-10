@@ -605,3 +605,34 @@
 /* Loop limits: a little more room by the cut corners */
 .card[data-shape='loop-start'] .header { padding-top: 16px; }
 .card[data-shape='loop-end'] .footer { padding-bottom: 14px; }
+
+/* An SVG icon: the size of an emoji icon */
+img.icon { width: 1em; height: 1em; }
+
+/* One column wide: the icon fills the card, no text (title in the tooltip,
+   still read by screen readers) */
+.card[data-icon-only] {
+  justify-content: center;
+  /* the icon scales with the card's width; the card is at least a square,
+     also where rows take their content's height (phone width) */
+  container-type: inline-size;
+  aspect-ratio: 1;
+}
+.card[data-icon-only] .header {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+}
+.card[data-icon-only] .icon {
+  font-size: clamp(1.25rem, 45cqi, 4rem);
+  margin: 0;
+}
+.card[data-icon-only] .headerText,
+.card[data-icon-only] .footer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}

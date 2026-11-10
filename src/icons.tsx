@@ -50,3 +50,14 @@ export function LogoIcon({ size = 24 }: { size?: number }) {
     </svg>
   )
 }
+
+/**
+ * A block's icon: an emoji or character as text, or an inline SVG drawing
+ * shown as an image (a data URL: scripts in it never run).
+ */
+export function BlockIcon({ icon, className }: { icon: string; className?: string }) {
+  const text = icon.trim()
+  if (!text.startsWith('<svg')) return <span className={className}>{icon}</span>
+  const svg = /\sxmlns=/.test(text.slice(0, text.indexOf('>'))) ? text : text.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+  return <img className={className} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`} alt="" draggable={false} />
+}

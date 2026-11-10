@@ -25,7 +25,7 @@ import { fitZoom } from './fit.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
 import { ShapeMenu } from './ShapeMenu.js'
 import { TextLevel } from './TextLevel.js'
-import { PlusIcon } from './icons.js'
+import { BlockIcon, PlusIcon } from './icons.js'
 import styles from './Viewer.module.css'
 
 /** Edits the viewer asks for. All of them are optional: without one, the matching control is hidden. */
@@ -742,7 +742,7 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
           const head = parent ?? { title: doc.title, description: doc.description, icon: undefined }
           return (
             <div className={`${styles.slideHeader} ${parent ? '' : styles.slideHeaderTop}`}>
-              {head.icon && <span className={styles.slideIcon}>{head.icon}</span>}
+              {head.icon && <BlockIcon icon={head.icon} className={styles.slideIcon} />}
               {/* Editing: the title and description of the document or the opened block, in place */}
               <div className={styles.slideHeaderText}>
                 <h1

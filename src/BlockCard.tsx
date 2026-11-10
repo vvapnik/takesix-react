@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { formatArea, type Area, type Block } from '@takesix/core'
 import { SHAPE_NAMES, ShapeGlyph } from './ShapeMenu.js'
-import { ArrowRightIcon, CrossIcon, PlusIcon, TextIcon } from './icons.js'
+import { ArrowRightIcon, BlockIcon, CrossIcon, PlusIcon, TextIcon } from './icons.js'
 import styles from './BlockCard.module.css'
 
 export interface CardRect {
@@ -150,6 +150,9 @@ export function BlockCard({
       data-shape={shape}
       // Phone width hides the description of blocks half the grid wide or narrower
       data-compact={area.width <= 3 || undefined}
+      // One column wide: the icon alone, the title in the tooltip
+      data-icon-only={(area.width === 1 && !!block.icon && !editing && !shape) || undefined}
+      title={area.width === 1 && block.icon && !editing ? block.title : undefined}
       data-drop={isDropTarget ? 'inside' : undefined}
       style={areaStyle(area)}
       onClick={handleCardClick}
@@ -271,7 +274,7 @@ export function BlockCard({
       )}
 
       <div className={styles.header} data-fit>
-        {block.icon && <span className={styles.icon}>{block.icon}</span>}
+        {block.icon && <BlockIcon icon={block.icon} className={styles.icon} />}
         <div className={styles.headerText}>
           <h2
             key={`title-${editing}`}

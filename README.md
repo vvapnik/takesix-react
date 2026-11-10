@@ -1,5 +1,10 @@
 # @takesix/react
 
+> TakeSix is an open format and libraries that let an AI agent answer with a diagram you can click into instead of a wall of text: at most six blocks per screen, and any block opens into up to six more.
+> **[takesix.vapnik.de](https://takesix.vapnik.de/)** · [FAQ](https://takesix.vapnik.de/faq/)
+
+![TakeSix: answers as diagrams, not walls of text. Six blocks of a checkout diagram with arrows.](https://takesix.vapnik.de/og.png)
+
 React viewer and editor for [takesix](https://github.com/vvapnik/takesix-core)
 diagrams. One screen shows at most **6 blocks**; click a block to zoom into
 its children. Links between blocks are drawn on every level, including links

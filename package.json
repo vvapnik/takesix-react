@@ -4,6 +4,9 @@
   "description": "React viewer and editor for takesix diagrams: at most 6 blocks per screen, drill into any of them",
   "type": "module",
   "main": "./dist/index.js",
+  "bin": {
+    "takesix": "dist/cli.js"
+  },
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -13,6 +16,10 @@
     "./preloader": {
       "types": "./dist/preloader.d.ts",
       "import": "./dist/preloader.js"
+    },
+    "./standalone": {
+      "types": "./dist/standalone/index.d.ts",
+      "import": "./dist/standalone.js"
     },
     "./style.css": "./dist/style.css"
   },
@@ -24,9 +31,9 @@
   ],
   "scripts": {
     "dev": "vite examples --config vite.config.ts",
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "build": "vite build --config vite.viewer.config.ts && vite build && vite build --config vite.cli.config.ts && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vite build --config vite.viewer.config.ts && vitest run",
     "test:watch": "vitest",
     "prepare": "npm run build"
   },

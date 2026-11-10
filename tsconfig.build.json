@@ -8,5 +8,6 @@
     "outDir": "dist",
     "types": ["vite/client"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/cli.ts", "src/bin.ts"]
 }

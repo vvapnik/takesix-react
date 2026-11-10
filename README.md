@@ -90,6 +90,24 @@ cannot open tabs or download, such as MCP Apps. To read such a link in your
 own editor, use `readDocumentFromHash(location.hash)` and validate the result
 with `parseDocument`; `createEditorLink(doc, url)` builds one.
 
+### Self-contained HTML
+
+One HTML file with the document and the viewer inside opens as the diagram
+without a server or network. From the command line:
+
+```bash
+npx @takesix/react build diagram.takesix.json        # writes diagram.html
+npx @takesix/react build diagram.json -o page.html
+```
+
+In code, `@takesix/react/standalone` builds the same page (the viewer with
+React is ~300 KB, so import it lazily):
+
+```tsx
+const { standaloneHtml } = await import('@takesix/react/standalone')
+<TakeSix document={doc} menu={{ html: () => standaloneHtml(doc) }} />
+```
+
 ### Theming
 
 All colours are CSS variables on the root element (`--ts-bg`, `--ts-surface`,

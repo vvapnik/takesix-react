@@ -24,7 +24,7 @@ export default defineConfig({
     lib: {
       // The loading screen has an entry of its own: pages and tools that only
       // need its HTML do not load React
-      entry: { index: resolve(import.meta.dirname, 'src/index.ts'), preloader: resolve(import.meta.dirname, 'src/preloader.ts') },
+      entry: { index: resolve(import.meta.dirname, 'src/index.ts'), preloader: resolve(import.meta.dirname, 'src/preloader.ts'), standalone: resolve(import.meta.dirname, 'src/standalone/index.ts') },
       formats: ['es'],
       fileName: (_format, name) => `${name}.js`,
       cssFileName: 'style',

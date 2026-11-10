@@ -47,8 +47,15 @@ function browserDownload({ name, mimeType, text }: MenuFile) {
 }
 
 /** Round logo button in the bottom-left corner with a small menu: editor, save, version. */
-export function Menu({ document: doc, options }: { document: TakeSixDocument; options: MenuOptions }) {
+export function Menu({ document: doc, options, onCopyLink }: {
+  document: TakeSixDocument
+  options: MenuOptions
+  /** Copies a link to the screen on view; resolves to whether it worked. */
+  onCopyLink?: () => Promise<boolean>
+}) {
   const [open, setOpen] = useState(false)
+  // Feedback of "Copy link to this screen"
+  const [copied, setCopied] = useState<boolean | null>(null)
   // undefined while the link is being packed, null when the diagram is too big
   const [link, setLink] = useState<string | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
@@ -87,6 +94,7 @@ export function Menu({ document: doc, options }: { document: TakeSixDocument; op
   function toggle() {
     setOpen(o => !o)
     setError(null)
+    setCopied(null)
   }
 
   function save(file: MenuFile) {
@@ -121,6 +129,16 @@ export function Menu({ document: doc, options }: { document: TakeSixDocument; op
             Open in editor
           </a>
           {error && <p className={styles.error} role="alert">{error}</p>}
+          {onCopyLink && (
+            <button
+              type="button"
+              className={styles.item}
+              role="menuitem"
+              onClick={() => onCopyLink().then(setCopied, () => setCopied(false))}
+            >
+              {copied === true ? 'Link copied' : copied === false ? 'Could not copy the link' : 'Copy link to this screen'}
+            </button>
+          )}
           <div className={styles.saveRow}>
             <span className={styles.saveLabel}>Save as</span>
             {options.html && (

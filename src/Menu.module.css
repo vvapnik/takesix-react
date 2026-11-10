@@ -66,6 +66,14 @@
   cursor: pointer;
 }
 
+button.item {
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+}
+
 .item:hover,
 .item:focus-visible {
   background: var(--ts-accent-soft);

@@ -75,7 +75,28 @@ after the first paint, and the whole page then reflows.
 | `editing` | `boolean` | Show the edit controls. Ignored without `onChange`. |
 | `theme` | `'auto' \| 'light' \| 'dark'` | Colour theme. `auto` (default) follows the system setting. |
 | `menu` | `boolean \| MenuOptions` | Logo button in the bottom-left corner while not editing: open in the online editor, save as HTML/JSON, version. Off by default. |
+| `view` | `ViewAddress` | The screen shown: `{ in: id }`, `{ at: id }` or `null` (top level). With `onViewChange` it controls the screen; leave it out and the component keeps it itself. |
+| `onViewChange` | `(view) => void` | The reader moved to another screen. |
+| `syncUrl` | `boolean` | Keep the screen in the page URL, with history. Off by default; ignored while `view` is set. See [Links to screens](#links-to-screens). |
 | `className` | `string` | Extra class for the root element. |
+
+### Links to screens
+
+Every screen has an address made of a block id (see
+[FORMAT.md](https://github.com/vvapnik/takesix-core/blob/main/FORMAT.md#screen-addresses)):
+`#in=<id>` opens the screen inside the block, `#at=<id>` the level the block
+lies on, with the block outlined. With `syncUrl` the viewer opens the screen
+from the page URL straight away, writes each move to the browser history
+(Back and Forward move between screens, reload keeps the screen) and keeps
+other fragment keys such as `#takesix=…`. It works in a self-contained HTML
+file opened from disk too: the standalone page turns `syncUrl` on.
+
+Only one viewer per page should sync with the URL; the others keep their
+screen to themselves, or take it from `view`. While viewing, each block has
+a link button on hover, and the menu has **Copy link to this screen**.
+`screenLink(view)` builds such a link for the current page; `parseViewAddress`,
+`formatViewAddress` and `resolveView` from `@takesix/core` read and write
+addresses.
 
 ### Menu
 
@@ -86,6 +107,7 @@ after the first paint, and the whole page then reflows.
   the URL fragment (`#takesix=…`, compressed), which is never sent to a
   server. Diagrams whose link would be longer than 100 000 characters show an
   error for now.
+- **Copy link to this screen** (see [Links to screens](#links-to-screens)).
 - **Save as** HTML (only with the `html` option) or JSON.
 - The package version.
 

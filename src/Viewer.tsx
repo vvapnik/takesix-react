@@ -11,12 +11,16 @@ import {
   levelLayoutIssues,
   overlap,
   readingOrder,
+  resolveView,
+  sameView,
+  viewOfPath,
   visibleLinks,
   type Area,
   type Block,
   type BlockShape,
   type Link,
   type TakeSixDocument,
+  type ViewAddress,
   type VisibleLink,
 } from '@takesix/core'
 import { BlockCard, areaStyle, type CardRect, type Cell } from './BlockCard.js'
@@ -25,7 +29,7 @@ import { fitZoom } from './fit.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
 import { ShapeMenu } from './ShapeMenu.js'
 import { TextLevel } from './TextLevel.js'
-import { BlockIcon, PlusIcon } from './icons.js'
+import { BlockIcon, CheckIcon, LinkIcon, PlusIcon } from './icons.js'
 import styles from './Viewer.module.css'
 
 /** Edits the viewer asks for. All of them are optional: without one, the matching control is hidden. */
@@ -64,6 +68,12 @@ interface Props {
   actions: ViewerActions
   /** Changes when styles or fonts arrive: text is measured again. */
   typographyTick: number
+  /** The screen to show. A change from outside (history, a link) moves there. */
+  view: ViewAddress
+  /** The reader moved to another screen. */
+  onNavigate: (view: ViewAddress) => void
+  /** Copies a link to a screen; without it blocks have no link button. */
+  onCopyLink?: (view: ViewAddress) => Promise<boolean>
 }
 
 interface PathEntry {
@@ -141,10 +151,12 @@ function newBlockArea(cell: Cell, taken: Area[]): Area | undefined {
   return undefined
 }
 
-export function Viewer({ document: doc, editing, actions, typographyTick }: Props) {
+export function Viewer({ document: doc, editing, actions, typographyTick, view, onNavigate, onCopyLink }: Props) {
   const slideRef = useRef<HTMLDivElement>(null)
   const pendingFrom = useRef<CardRect | null>(null)
-  const needsReset = useRef(false)
+  // Zooming out: a copy of the screen being left, to shrink into its card
+  // once the level above is laid out (see the FLIP effect)
+  const pendingGhost = useRef<{ el: HTMLElement; cardId: string } | null>(null)
   const isAnimating = useRef(false)
   const cardElsMap = useRef(new Map<string, HTMLDivElement>())
   const gridAreaRef = useRef<HTMLDivElement>(null)
@@ -174,7 +186,18 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
   // Breadcrumb a dragged block would move up to
   const [dropCrumb, setDropCrumb] = useState<number | null>(null)
   const [arrowPaths, setArrowPaths] = useState<ArrowPath[]>([])
-  const [path, setPath] = useState<PathEntry[]>([])
+  // Opened by a link: straight to that screen, no zoom from the top
+  const [initial] = useState(() => resolveView(doc, view))
+  const [path, setPath] = useState<PathEntry[]>(() => initial.path.map(id => ({ id })))
+  // The block an `at` address points at, outlined until the reader moves on
+  const [highlight, setHighlight] = useState<string | null>(initial.highlight ?? null)
+  // Header link button feedback: copied, failed, or nothing yet
+  const [screenCopied, setScreenCopied] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (screenCopied === null) return
+    const timer = setTimeout(() => setScreenCopied(null), 1500)
+    return () => clearTimeout(timer)
+  }, [screenCopied])
   const [layoutKey, setLayoutKey] = useState(0)
   const [sizeTick, setSizeTick] = useState(0)
   // Bumped when the zoom animation ends, so arrows are measured on settled cards.
@@ -241,15 +264,24 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
     const slide = slideRef.current
     if (!slide) return
 
-    if (needsReset.current) {
-      // After zoom-out: snap slide back to natural position with parent content
-      needsReset.current = false
-      slide.style.transition = 'none'
-      slide.style.transform = ''
-      slide.style.transformOrigin = ''
-      slide.getBoundingClientRect()
-      slide.style.transition = ''
-      return
+    const ghost = pendingGhost.current
+    pendingGhost.current = null
+    if (ghost) {
+      // Zoom out: the copy of the left screen shrinks into its card on the
+      // level now shown. Measured on the next frame, after the level's fit
+      // zoom has settled (that re-renders before the frame is painted).
+      isAnimating.current = true
+      requestAnimationFrame(() => {
+        const card = cardElsMap.current.get(ghost.cardId)
+        const done = () => { ghost.el.remove(); isAnimating.current = false }
+        if (!card) { done(); return }
+        const from = ghost.el.getBoundingClientRect()
+        const to = card.getBoundingClientRect()
+        ghost.el.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.8, 0), opacity 0.12s linear 0.25s'
+        ghost.el.style.transform = `translate(${to.left + to.width / 2 - (from.left + from.width / 2)}px, ${to.top + to.height / 2 - (from.top + from.height / 2)}px) scale(${to.width / from.width}, ${to.height / from.height})`
+        ghost.el.style.opacity = '0'
+        setTimeout(done, 380)
+      })
     }
 
     const from = pendingFrom.current
@@ -449,10 +481,12 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
     return new Set((doc.links ?? []).filter(l => l.from === connectingFrom).map(l => l.to))
   }, [doc.links, connectingFrom])
 
-  function drillIn(block: Block, cardRect: CardRect) {
+  function drillIn(block: Block, cardRect: CardRect, report = true) {
     pendingFrom.current = cardRect
     setPath(p => [...p, { id: block.id, cardRect }])
+    setHighlight(null)
     setLayoutKey(k => k + 1)
+    if (report) onNavigate({ in: block.id })
   }
 
   function addChildAndDrillIn(block: Block, cardRect: CardRect) {
@@ -465,34 +499,66 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
     drillIn(block, cardRect)
   }
 
-  function goBack(depth: number) {
-    if (depth >= livePath.length) return
-    const toRect = livePath[livePath.length - 1]?.cardRect
+  /**
+   * Up to the level at `depth` (0 = top). The screen being left shrinks into
+   * its card there: the card is measured on that level once it is laid out,
+   * so this works after opening by a link too, and after a resize.
+   */
+  function goBack(depth: number, nextHighlight: string | null = null, report = true) {
+    if (depth >= livePath.length || isAnimating.current) return
+    const target = livePath.slice(0, depth)
     const slide = slideRef.current
-
-    if (toRect && slide) {
-      const from = slide.getBoundingClientRect()
-      const sx = toRect.width / from.width
-      const sy = toRect.height / from.height
-      const dx = (toRect.left + toRect.width / 2) - (from.left + from.width / 2)
-      const dy = (toRect.top + toRect.height / 2) - (from.top + from.height / 2)
-
-      slide.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.8, 0)'
-      slide.style.transformOrigin = 'center center'
-      slide.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`
-
-      isAnimating.current = true
-      setTimeout(() => {
-        isAnimating.current = false
-        needsReset.current = true
-        setPath(p => p.slice(0, depth))
-        setLayoutKey(k => k + 1)
-      }, 370)
-    } else {
-      setPath(p => p.slice(0, depth))
-      setLayoutKey(k => k + 1)
+    const host = slide?.parentElement
+    if (slide && host) {
+      const s = slide.getBoundingClientRect()
+      const h = host.getBoundingClientRect()
+      const ghost = slide.cloneNode(true) as HTMLElement
+      ghost.removeAttribute('id')
+      ghost.setAttribute('aria-hidden', 'true')
+      ghost.dataset.ghost = ''
+      Object.assign(ghost.style, {
+        position: 'absolute', margin: '0', zIndex: '5', pointerEvents: 'none', transformOrigin: 'center center',
+        left: `${s.left - h.left}px`, top: `${s.top - h.top}px`, width: `${s.width}px`, height: `${s.height}px`,
+      })
+      host.appendChild(ghost)
+      pendingGhost.current = { el: ghost, cardId: livePath[depth]!.id }
     }
+    setPath(target)
+    setHighlight(nextHighlight)
+    setLayoutKey(k => k + 1)
+    if (report) onNavigate(nextHighlight ? { at: nextHighlight } : viewOfPath(target.map(p => p.id)))
   }
+
+  // The screen as an address, to tell a change from outside from our own
+  const ownView: ViewAddress = highlight ? { at: highlight } : viewOfPath(livePath.map(p => p.id))
+  const ownViewRef = useRef(ownView)
+  ownViewRef.current = ownView
+
+  // A new address from outside (back/forward, a link, the host): go there.
+  // One level up or down zooms like a click; anything further jumps.
+  useEffect(() => {
+    if (sameView(view, ownViewRef.current)) return
+    const next = resolveView(doc, view, index)
+    const current = livePath.map(p => p.id)
+    const isPrefix = (a: string[], b: string[]) => a.length <= b.length && a.every((id, i) => b[i] === id)
+    if (next.path.length < current.length && isPrefix(next.path, current) && !isAnimating.current) {
+      goBack(next.path.length, next.highlight ?? null, false)
+      return
+    }
+    const child = next.path[current.length]
+    const card = child !== undefined && next.path.length === current.length + 1 && isPrefix(current, next.path)
+      ? cardElsMap.current.get(child) : undefined
+    if (card && !next.highlight) {
+      const r = card.getBoundingClientRect()
+      drillIn(index.get(child!)!.block, { left: r.left, top: r.top, width: r.width, height: r.height }, false)
+      return
+    }
+    setPath(next.path.map(id => ({ id })))
+    setHighlight(next.highlight ?? null)
+    setLayoutKey(k => k + 1)
+    // Only the address changes: the rest of the state is read through refs and the latest render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view])
 
   function endDrag() {
     setDragId(null)
@@ -632,6 +698,8 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
       onAddChild={addChildAndDrillIn}
       onAddText={addTextAndDrillIn}
       onDrillIn={drillIn}
+      highlighted={highlight === block.id}
+      onCopyLink={onCopyLink && !editing ? id => onCopyLink({ at: id }) : undefined}
       connectingFrom={connectingFrom}
       canLinkTo={canLinkTo(block.id)}
       isConnected={linkedFromSource.has(block.id)}
@@ -787,6 +855,17 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
               </div>
               {/* On the right, so entering edit mode leaves the grid its size */}
               <div className={styles.headerActions}>
+              {onCopyLink && !editing && (
+                // Link to this screen (`#in=<id>`, or the top level)
+                <button
+                  className={styles.linkBtn}
+                  onClick={() => onCopyLink(viewOfPath(livePath.map(p => p.id))).then(setScreenCopied, () => setScreenCopied(false))}
+                  aria-label="Copy link to this screen"
+                  title={screenCopied === true ? 'Link copied' : screenCopied === false ? 'Could not copy the link' : 'Copy link to this screen'}
+                >
+                  {screenCopied === true ? <CheckIcon /> : <LinkIcon />}
+                </button>
+              )}
               {editing && textBlock && !textBlock.details?.trim() && (
                 // Only while empty: a block with text stays a text block
                 <div className={styles.levelTools} role="group" aria-label="Level tools">

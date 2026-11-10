@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { formatArea, type Area, type Block } from '@takesix/core'
 import { SHAPE_NAMES, ShapeGlyph } from './ShapeMenu.js'
-import { ArrowRightIcon, BlockIcon, CrossIcon, PlusIcon, TextIcon } from './icons.js'
+import { ArrowRightIcon, BlockIcon, CheckIcon, CrossIcon, LinkIcon, PlusIcon, TextIcon } from './icons.js'
 import styles from './BlockCard.module.css'
 
 export interface CardRect {
@@ -62,14 +62,25 @@ interface Props {
   /** Whether this block may take `area` (inside the grid, no other block there). */
   canPlace: (id: string, area: Area) => boolean
   onPlace: (id: string, at: string) => void
+  /** The block a link points at (`#at=<id>`): outlined. */
+  highlighted?: boolean
+  /** Copies a link to this block; resolves to whether it worked. Without it, no link button. */
+  onCopyLink?: (id: string) => Promise<boolean>
 }
 
 export function BlockCard({
   block, editing, onRename, onDescribe, onOpenShapes, onDelete, onAddChild, onAddText, onDrillIn,
   connectingFrom, canLinkTo, isConnected, onStartConnect, onConnectTarget, onRegisterEl,
   area: placedArea, isDragged, isDropTarget, onDragStartBlock, onDragEndBlock, onNudge,
-  selectable, selected, onToggleSelect, cellAt, canPlace, onPlace,
+  selectable, selected, onToggleSelect, cellAt, canPlace, onPlace, highlighted, onCopyLink,
 }: Props) {
+  // Link button feedback: copied, failed, or nothing yet
+  const [copied, setCopied] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (copied === null) return
+    const timer = setTimeout(() => setCopied(null), 1500)
+    return () => clearTimeout(timer)
+  }, [copied])
   // While the corner is being dragged: the area under the pointer
   const [preview, setPreview] = useState<Area | null>(null)
   const area = preview ?? placedArea
@@ -131,6 +142,7 @@ export function BlockCard({
   let cardClass = styles.card
   if (opens && !isConnectable && !selectable) cardClass += ` ${styles.cardZoomable}`
   if (selected) cardClass += ` ${styles.cardSelected}`
+  if (highlighted) cardClass += ` ${styles.cardHighlighted}`
   // A full-width single row reads like a list item
   if (area.width === 6 && area.height === 1) cardClass += ` ${styles.cardWide}`
   if (preview) cardClass += ` ${previewOk ? styles.cardResizing : styles.cardResizingBad}`
@@ -237,6 +249,21 @@ export function BlockCard({
           onClick={e => { e.stopPropagation(); onConnectTarget(block.id) }}
           aria-label={isConnected ? `Disconnect from ${block.title}` : `Connect to ${block.title}`}
         />
+      )}
+
+      {onCopyLink && (
+        // Viewing only: a link that opens this level with the block outlined
+        <button
+          className={`${styles.linkBtn} ${copied !== null ? styles.linkBtnShown : ''}`}
+          onClick={e => {
+            e.stopPropagation()
+            onCopyLink(block.id).then(setCopied, () => setCopied(false))
+          }}
+          aria-label={`Copy link to ${block.title}`}
+          title={copied === true ? 'Link copied' : copied === false ? 'Could not copy the link' : 'Copy link to this block'}
+        >
+          {copied === true ? <CheckIcon /> : <LinkIcon />}
+        </button>
       )}
 
       {editing && (

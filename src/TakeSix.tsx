@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   addBlock,
   addLink,
@@ -7,11 +7,16 @@ import {
   groupBlocks,
   moveBlock,
   removeBlock,
+  formatViewAddress,
+  parseViewAddress,
+  sameView,
   TakeSixError,
   updateBlock,
   type Link,
   type TakeSixDocument,
+  type ViewAddress,
 } from '@takesix/core'
+import { copyText, screenLink } from './address.js'
 import { useTypographyReady } from './ready.js'
 import { Viewer, type ViewerActions } from './Viewer.js'
 import { Menu, type MenuOptions } from './Menu.js'
@@ -35,6 +40,22 @@ export interface TakeSixProps {
    * `true` for the defaults, or options for the host (see `MenuOptions`).
    */
   menu?: boolean | MenuOptions
+  /**
+   * The screen shown: `{ in: id }` inside a block, `{ at: id }` the block's
+   * level with the block outlined, `null` the top level. Pass it with
+   * `onViewChange` to control the screen; leave it out and the component
+   * keeps it itself.
+   */
+  view?: ViewAddress
+  /** The reader moved to another screen. */
+  onViewChange?: (view: ViewAddress) => void
+  /**
+   * Keep the screen in the page URL (`#in=<id>` / `#at=<id>`): it opens from
+   * there, every move is a browser history entry, Back and Forward move
+   * between screens, reload keeps the screen. Use it for one viewer per page
+   * at most; others keep the URL untouched. Ignored while `view` is set.
+   */
+  syncUrl?: boolean
   className?: string
 }
 
@@ -43,8 +64,46 @@ export type Theme = 'light' | 'dark' | 'auto'
 const NEW_BLOCK = { title: 'New block', description: 'Description' }
 
 /** Viewer and editor for a takesix document: one level on screen, click a block to open it. */
-export function TakeSix({ document: doc, onChange, editing: editingProp = false, theme = 'auto', menu = false, className }: TakeSixProps) {
+export function TakeSix({
+  document: doc, onChange, editing: editingProp = false, theme = 'auto', menu = false,
+  view: viewProp, onViewChange, syncUrl = false, className,
+}: TakeSixProps) {
   const editing = onChange !== undefined && editingProp
+  const controlled = viewProp !== undefined
+  const urlSynced = syncUrl && !controlled
+  // The screen when the host does not control it: from the URL when synced
+  const [ownView, setOwnView] = useState<ViewAddress>(() => (urlSynced ? parseViewAddress(window.location.hash) : null))
+  const view = controlled ? viewProp : ownView
+  const ownViewRef = useRef(ownView)
+  ownViewRef.current = ownView
+  const onViewChangeRef = useRef(onViewChange)
+  onViewChangeRef.current = onViewChange
+
+  const navigate = useCallback((next: ViewAddress) => {
+    if (!controlled) setOwnView(next)
+    if (urlSynced) {
+      const hash = formatViewAddress(next, window.location.hash)
+      // An empty fragment would leave a bare "#": drop it with the path
+      const url = hash || window.location.pathname + window.location.search
+      if (hash !== window.location.hash) window.history.pushState(null, '', url)
+    }
+    onViewChangeRef.current?.(next)
+  }, [controlled, urlSynced])
+
+  // Back and Forward (and an edited address bar) move between screens
+  useEffect(() => {
+    if (!urlSynced) return
+    const onPop = () => {
+      const next = parseViewAddress(window.location.hash)
+      if (sameView(ownViewRef.current, next)) return
+      setOwnView(next)
+      onViewChangeRef.current?.(next)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [urlSynced])
+
+  const copyLink = useCallback((target: ViewAddress) => copyText(screenLink(target)), [])
 
   const actions = useMemo<ViewerActions>(() => {
     const commit = (next: TakeSixDocument) => { if (next !== doc) onChange?.(next) }
@@ -143,8 +202,16 @@ export function TakeSix({ document: doc, onChange, editing: editingProp = false,
       // Laid out but not shown until styles and fonts are in (see useTypographyReady)
       style={typography.ready ? undefined : { visibility: 'hidden' }}
     >
-      <Viewer document={doc} editing={editing} actions={actions} typographyTick={typography.ready ? typography.tick + 1 : 0} />
-      {menu && !editing && <Menu document={doc} options={menu === true ? {} : menu} />}
+      <Viewer
+        document={doc}
+        editing={editing}
+        actions={actions}
+        typographyTick={typography.ready ? typography.tick + 1 : 0}
+        view={view}
+        onNavigate={navigate}
+        onCopyLink={copyLink}
+      />
+      {menu && !editing && <Menu document={doc} options={menu === true ? {} : menu} onCopyLink={() => copyLink(view)} />}
     </div>
   )
 }

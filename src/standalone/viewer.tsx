@@ -13,7 +13,7 @@ if (root) {
     // The page as it came, before React fills #root: "Save as HTML" saves this
     // copy, which opens on its own like the original.
     const page = `<!doctype html>\n${document.documentElement.outerHTML}`
-    createRoot(root).render(<TakeSix document={result.document} menu={{ html: () => page }} />)
+    createRoot(root).render(<TakeSix document={result.document} menu={{ html: () => page }} syncUrl />)
   } else {
     // Instead of the loading screen: why there is no diagram
     root.innerHTML = preloaderErrorHtml(result

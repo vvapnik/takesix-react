@@ -1,4 +1,6 @@
 .viewer {
+  /* holds the copy of the screen that shrinks into its card on the way up */
+  position: relative;
   display: flex;
   flex-direction: column;
   /* between the breadcrumb and the slide; kept small to save height */
@@ -461,3 +463,25 @@
 }
 
 img.slideIcon { width: 1em; height: 1em; }
+
+/* Header: copy a link to the screen, viewing only */
+.linkBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--ts-icon);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.linkBtn:hover,
+.linkBtn:focus-visible {
+  background: var(--ts-accent-soft);
+  color: var(--ts-accent);
+}

@@ -636,3 +636,58 @@ img.icon { width: 1em; height: 1em; }
   overflow: hidden;
   clip-path: inset(50%);
 }
+
+/* Link to the block: viewing only, shown on hover or focus like the edit controls */
+.linkBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ts-surface);
+  color: var(--ts-icon);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  z-index: 2;
+}
+
+.card:hover .linkBtn,
+.linkBtn:focus-visible,
+.linkBtnShown {
+  opacity: 1;
+}
+
+.linkBtn:hover {
+  background: var(--ts-accent-soft);
+  color: var(--ts-accent);
+}
+
+@media (hover: none) {
+  .linkBtn { display: none; }
+}
+
+/* The block a link points at: an accent ring that does not depend on the
+   block's colour, and one short pulse to catch the eye */
+.cardHighlighted,
+.cardHighlighted:hover {
+  border-color: var(--ts-accent);
+  box-shadow: 0 0 0 2px var(--ts-accent), 0 4px 16px rgba(0, 0, 0, 0.1);
+  animation: ts-highlight 1.2s ease-out 0.2s 1;
+}
+
+@keyframes ts-highlight {
+  0% { box-shadow: 0 0 0 2px var(--ts-accent), 0 0 0 2px var(--ts-accent-soft); }
+  40% { box-shadow: 0 0 0 2px var(--ts-accent), 0 0 0 12px var(--ts-accent-soft); }
+  100% { box-shadow: 0 0 0 2px var(--ts-accent), 0 4px 16px rgba(0, 0, 0, 0.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardHighlighted { animation: none; }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "TakeSix React (@takesix/react)",
+  "description": "React viewer and editor for TakeSix diagrams. TakeSix is an open format and libraries that let an AI agent answer with a diagram you can click into instead of a wall of text: at most six blocks per screen, and any block opens into up to six more.",
+  "excludeFolders": ["test", "dist", "build", "node_modules"],
+  "excludeFiles": ["CONTRIBUTING.md"],
+  "rules": [
+    "Import the styles once: import '@takesix/react/style.css'.",
+    "The document format and its validation live in @takesix/core; check a document with parseDocument before passing it to the viewer."
+  ]
+}

@@ -1,7 +1,8 @@
 {
   "name": "@takesix/react",
   "version": "0.8.0",
-  "description": "React viewer and editor for takesix diagrams: at most 6 blocks per screen, drill into any of them",
+  "description": "React viewer and editor for TakeSix diagrams. TakeSix is an open format and libraries that let an AI agent answer with a diagram you can click into instead of a wall of text: at most six blocks per screen, and any block opens into up to six more.",
+  "homepage": "https://takesix.vapnik.de/",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -38,16 +39,26 @@
     "prepare": "npm run build"
   },
   "keywords": [
+    "takesix",
     "diagram",
     "architecture",
     "c4",
     "presentation",
     "react",
-    "takesix"
+    "visualization",
+    "nested",
+    "zoomable",
+    "viewer",
+    "editor",
+    "ai",
+    "agent"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vvapnik/takesix-react.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vvapnik/takesix-react/issues"
   },
   "license": "MIT",
   "engines": {

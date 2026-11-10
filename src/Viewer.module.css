@@ -194,8 +194,8 @@
 .arrow {
   fill: none;
   stroke: var(--ts-accent);
-  stroke-width: 2;
-  stroke-opacity: 0.7;
+  stroke-width: 3;
+  stroke-opacity: 0.8;
 }
 
 .arrowSvgEditing .arrowHit {
@@ -222,13 +222,13 @@
 
 /* Link styles: a dashed or dotted line */
 .dashed {
-  stroke-dasharray: 7 5;
+  stroke-dasharray: 8 6;
 }
 
 .dotted {
-  stroke-dasharray: 0 5;
+  stroke-dasharray: 0 7;
   stroke-linecap: round;
-  stroke-width: 2.5;
+  stroke-width: 3.5;
 }
 
 .arrowHead {
@@ -318,7 +318,8 @@
    as tall as their content, and empty columns and rows shrink away */
 @container ts-level (max-width: 560px) {
   .grid {
-    column-gap: 8px;
+    /* still room for an arrow and its head between neighbours */
+    column-gap: 16px;
     --ts-grid-margin: 28px;
   }
   .grid:not(.gridEditing) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bezierMid, determineEdges, IO_SKEW, routeArrows, type Rect } from '../src/geometry.js'
+import { bezierMid, controlPoints, determineEdges, IO_SKEW, routeArrows, type Rect } from '../src/geometry.js'
 
 function rect(left: number, top: number, width = 100, height = 60): Rect {
   return { left, top, width, height, right: left + width, bottom: top + height }
@@ -39,8 +39,12 @@ describe('determineEdges', () => {
     expect(determineEdges(rect(0, 0), rect(0, 200), [])).toEqual({ exitEdge: 'bottom', entryEdge: 'top', anchor: 50 })
     expect(determineEdges(rect(0, 200), rect(0, 0), [])).toEqual({ exitEdge: 'top', entryEdge: 'bottom', anchor: 50 })
     // neither rows nor columns shared: side to side, like a branch of a tree
-    expect(determineEdges(rect(0, 200), rect(300, 0), [])).toEqual({ exitEdge: 'right', entryEdge: 'left' })
-    expect(determineEdges(rect(300, 0), rect(0, 200), [])).toEqual({ exitEdge: 'left', entryEdge: 'right' })
+    expect(determineEdges(rect(0, 200), rect(300, 0), [])).toEqual({
+      exitEdge: 'right', entryEdge: 'left', alt: { exitEdge: 'top', entryEdge: 'bottom' } })
+    expect(determineEdges(rect(300, 0), rect(0, 200), [])).toEqual({
+      exitEdge: 'left', entryEdge: 'right', alt: { exitEdge: 'bottom', entryEdge: 'top' } })
+    // a card between the rows: no way up or down
+    expect(determineEdges(rect(300, 0), rect(0, 200), [rect(150, 100, 100, 60)]).alt).toBeUndefined()
   })
 })
 
@@ -51,6 +55,38 @@ describe('bezierMid', () => {
 })
 
 describe('routeArrows', () => {
+  it('keeps a straight arrow straight when its edge is shared with another arrow', () => {
+    // a → b straight across; b → c leaves through the same left edge of b
+    const rects = new Map([['a', rect(0, 0)], ['b', rect(300, 0)], ['c', rect(0, 200)]])
+    const [ab] = routeArrows([
+      { key: 'a|b', fromId: 'a', toId: 'b', headAtEnd: true },
+      { key: 'b|c', fromId: 'b', toId: 'c', headAtEnd: true },
+    ], rects, rect(0, 0, 800, 800))
+    const ys = [...ab!.d.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map(m => Number(m[2]))
+    expect(new Set(ys).size).toBe(1)
+  })
+
+  it('takes the way whose edges no arrow uses the other way', () => {
+    // a → b → c across the top row, c → d wraps back to the start of the next
+    // row: across would leave c where b → c enters and enter d where d → e leaves
+    const rects = new Map([
+      ['a', rect(0, 0)], ['b', rect(200, 0)], ['c', rect(400, 0)],
+      ['d', rect(0, 200)], ['e', rect(200, 200)],
+    ])
+    const paths = routeArrows([
+      { key: 'b|c', fromId: 'b', toId: 'c', headAtEnd: true },
+      { key: 'c|d', fromId: 'c', toId: 'd', headAtEnd: true },
+      { key: 'd|e', fromId: 'd', toId: 'e', headAtEnd: true },
+    ], rects, rect(0, 0, 800, 800))
+    const cd = paths.find(p => p.key === 'c|d')!
+    // leaves the bottom of c (y 60), ends above the top of d (y 200)
+    expect(cd.d).toMatch(/^M 450 60 C /)
+    expect(cd.vertical).toBe(true)
+    // with nothing on the side edges, across stays
+    const [alone] = routeArrows([{ key: 'c|d', fromId: 'c', toId: 'd' }], rects, rect(0, 0, 800, 800))
+    expect(alone!.d).toMatch(/^M 400 30 C /)
+  })
+
   it('draws from edge to edge, relative to the container', () => {
     const rects = new Map([['a', rect(100, 100)], ['b', rect(300, 100)]])
     const [arrow] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b' }], rects, rect(100, 100, 800, 800))
@@ -71,13 +107,13 @@ describe('routeArrows', () => {
   })
 
   it('ends at the base of an arrowhead, which stops short of the card', () => {
-    // 200 (card edge) - 4 (gap) - 10 (head length) = 186
+    // 200 (card edge) - 4 (gap) - 13 (head length) = 183
     const rects = new Map([['a', rect(100, 100)], ['b', rect(300, 100)]])
     const box = rect(100, 100, 800, 800)
     const [end] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b', headAtEnd: true }], rects, box)
-    expect(end!.d).toMatch(/^M 100 30 C .* 186 30$/)
+    expect(end!.d).toMatch(/^M 100 30 C .* 183 30$/)
     const [both] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b', headAtStart: true, headAtEnd: true }], rects, box)
-    expect(both!.d).toMatch(/^M 114 30 C .* 186 30$/)
+    expect(both!.d).toMatch(/^M 117 30 C .* 183 30$/)
   })
 
   it('shrinks the head offsets to fit a narrow gap instead of running backwards', () => {
@@ -127,8 +163,21 @@ describe('routeArrows (shapes and detours)', () => {
   it('draws a detour as straight lines with rounded corners', () => {
     const rects = new Map([['end', rect(100, 200)], ['start', rect(100, 0)], ['body', rect(50, 100, 200)], ['side', rect(-50, 0, 100, 60)]])
     const [arrow] = routeArrows([{ key: 'end|start', fromId: 'end', toId: 'start', headAtEnd: true }], rects, container)
-    expect(arrow!.d).toMatch(/^M 200 230 L 260 230 Q 270 230 270 220 L 270 40 Q 270 30 260 30 L 214 30$/)
+    expect(arrow!.d).toMatch(/^M 200 230 L 260 230 Q 270 230 270 220 L 270 40 Q 270 30 260 30 L 217 30$/)
     expect(arrow!.mid).toEqual({ x: 270, y: 130 })
     expect(arrow!.vertical).toBe(true)
+  })
+})
+
+describe('controlPoints', () => {
+  it('keeps a short side-to-side arrow from running back into its card', () => {
+    const from = { left: 0, top: 0, right: 100, bottom: 50, width: 100, height: 50 }
+    const to = { left: 130, top: 0, right: 230, bottom: 50, width: 100, height: 50 }
+    const p1 = { x: 100, y: 25 }
+    const p2 = { x: 115, y: 25 }
+    const [c1, c2] = controlPoints(from, to, { x: 0, y: 0 }, 'right', 'left', p1, p2)
+    expect(c1.x).toBeLessThanOrEqual(c2.x)
+    expect(c1.x).toBeGreaterThanOrEqual(p1.x)
+    expect(c2.x).toBeLessThanOrEqual(p2.x)
   })
 })

@@ -20,7 +20,7 @@ import {
   type VisibleLink,
 } from '@takesix/core'
 import { BlockCard, areaStyle, type CardRect, type Cell } from './BlockCard.js'
-import { HEAD_LENGTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
+import { HEAD_LENGTH, HEAD_WIDTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
 import { fitZoom } from './fit.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
 import { ShapeMenu } from './ShapeMenu.js'
@@ -76,6 +76,10 @@ interface Arrow extends ArrowPath {
   link: VisibleLink
   label?: string
 }
+
+/** A straight arrow across less space than this joins neighbouring blocks
+    (no free cell between them): it is drawn without its label. */
+const NEIGHBOUR_GAP = 48
 
 /** Space between a vertical arrow and its label. */
 const LABEL_GAP = 8
@@ -419,7 +423,12 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
     const byKey = new Map(links.map(l => [l.key, l]))
     return arrowPaths.flatMap(p => {
       const link = byKey.get(p.key)
-      return link ? [{ ...p, link, label: arrowLabel(link) }] : []
+      if (!link) return []
+      // Neighbours (no free cell between them, or one shrunk away on a narrow
+      // level): the short arrow has no room for its label
+      const label = arrowLabel(link)
+      const roomy = p.span === undefined || p.span >= NEIGHBOUR_GAP
+      return [{ ...p, link, label: roomy ? label : undefined }]
     })
   }, [arrowPaths, links])
 
@@ -852,11 +861,11 @@ export function Viewer({ document: doc, editing, actions, typographyTick }: Prop
             <svg className={`${styles.arrowSvg} ${editing ? styles.arrowSvgEditing : ''}`} aria-hidden={editing ? undefined : true}>
               <defs>
                 {/* Base of the head at the path end (refX 0): the head continues the line. */}
-                <marker id={markerId} markerWidth={HEAD_LENGTH} markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                  <path d={`M 0 0 L ${HEAD_LENGTH} 4 L 0 8 Z`} className={styles.arrowHead} />
+                <marker id={markerId} markerWidth={HEAD_LENGTH} markerHeight={HEAD_WIDTH} refX="0" refY={HEAD_WIDTH / 2} orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+                  <path d={`M 0 0 L ${HEAD_LENGTH} ${HEAD_WIDTH / 2} L 0 ${HEAD_WIDTH} Z`} className={styles.arrowHead} />
                 </marker>
-                <marker id={warnMarkerId} markerWidth={HEAD_LENGTH} markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                  <path d={`M 0 0 L ${HEAD_LENGTH} 4 L 0 8 Z`} className={styles.arrowHeadWarn} />
+                <marker id={warnMarkerId} markerWidth={HEAD_LENGTH} markerHeight={HEAD_WIDTH} refX="0" refY={HEAD_WIDTH / 2} orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+                  <path d={`M 0 0 L ${HEAD_LENGTH} ${HEAD_WIDTH / 2} L 0 ${HEAD_WIDTH} Z`} className={styles.arrowHeadWarn} />
                 </marker>
               </defs>
               {arrows.map(a => {

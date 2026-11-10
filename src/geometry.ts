@@ -43,7 +43,10 @@ export const HEAD_GAP = 4
 
 /** Length of the arrowhead. The path ends at its base and the head is drawn
     beyond it, so the line never shows through the tip. */
-export const HEAD_LENGTH = 10
+export const HEAD_LENGTH = 13
+
+/** Width of the arrowhead at its base. */
+export const HEAD_WIDTH = 11
 
 /** Shortest visible line left between two arrowheads. */
 const MIN_LINE = 2
@@ -77,6 +80,8 @@ export interface ArrowPath {
   vertical: boolean
   /** A detour on the left: its label goes outside, to the left, when there is room. */
   detourLeft?: boolean
+  /** A straight arrow between facing card edges: the free space between the cards. */
+  span?: number
 }
 
 // Distribute N connection points symmetrically around the center of an edge
@@ -102,6 +107,12 @@ export interface Edges {
    * (bottom edges). Absent: no detour.
    */
   lane?: number
+  /**
+   * Another way between the same cards (a diagonal: up or down instead of
+   * across), taken when its edges carry no arrows going the other way and
+   * these do.
+   */
+  alt?: Edges
 }
 
 /** Whether an axis-aligned segment passes through the inside of a rect. */
@@ -155,7 +166,18 @@ export function determineEdges(fromRect: Rect, toRect: Rect, obstacleRects: Rect
     // Diagonal neighbours (a branch of a tree): side to side, so the diagram
     // reads left to right
     const goRight = toCX >= fromCX
-    return { exitEdge: goRight ? 'right' : 'left', entryEdge: goRight ? 'left' : 'right' }
+    const across: Edges = { exitEdge: goRight ? 'right' : 'left', entryEdge: goRight ? 'left' : 'right' }
+    // Up or down instead, when no card stands between the rows
+    const rowsApart = toCY > fromCY ? toRect.top - fromRect.bottom : fromRect.top - toRect.bottom
+    if (rowsApart > 0) {
+      const goDown = toCY > fromCY
+      const top = goDown ? fromRect.bottom : toRect.bottom
+      const bottom = goDown ? toRect.top : fromRect.top
+      const clear = !obstacleRects.some(r =>
+        r.right > Math.min(fromCX, toCX) && r.left < Math.max(fromCX, toCX) && r.bottom > top && r.top < bottom)
+      if (clear) across.alt = { exitEdge: goDown ? 'bottom' : 'top', entryEdge: goDown ? 'top' : 'bottom' }
+    }
+    return across
   }
   const goDown = toCY > fromCY
   const top = goDown ? fromRect.bottom : toRect.bottom
@@ -246,7 +268,11 @@ export function controlPoints(
     const toCX = (toRect.left + toRect.right) / 2
     const fromCX = (fromRect.left + fromRect.right) / 2
     const s = exitEdge === 'right' ? 1 : -1
-    const offset = Math.min(Math.abs(toCX - fromCX) * 0.4, 80)
+    let offset = Math.min(Math.abs(toCX - fromCX) * 0.4, 80)
+    // A short arrow ahead: control points past each other would run the curve
+    // backwards, into the card it leaves
+    const ahead = s * (p2.x - p1.x)
+    if (ahead > 0) offset = Math.min(offset, ahead / 2)
     return [{ x: p1.x + s * offset, y: p1.y }, { x: p2.x - s * offset, y: p2.y }]
   }
 
@@ -313,6 +339,23 @@ export function routeArrows(
     conns.push({ ...request, fromRect, toRect, ...edges })
   }
 
+  // An arrow with another way picks the one whose edges no arrow uses the
+  // other way: arrows out of a card share one side, arrows in another
+  const uses = (id: string, edge: Edge, role: 'exit' | 'entry', skip: number) =>
+    conns.filter((o, oi) => oi !== skip &&
+      (role === 'exit' ? o.fromId === id && o.exitEdge === edge : o.toId === id && o.entryEdge === edge)).length
+  const against = (c: Conn, e: Edges, ci: number) =>
+    uses(c.fromId, e.exitEdge, 'entry', ci) + uses(c.toId, e.entryEdge, 'exit', ci)
+  conns.forEach((c, ci) => {
+    if (!c.alt) return
+    if (against(c, c.alt, ci) < against(c, c, ci)) {
+      const { alt } = c
+      c.exitEdge = alt.exitEdge
+      c.entryEdge = alt.entryEdge
+      c.alt = undefined
+    }
+  })
+
   const pools = new Map<string, Array<{ ci: number; role: 'exit' | 'entry' }>>()
   const join = (k: string, ci: number, role: 'exit' | 'entry') => {
     let pool = pools.get(k)
@@ -329,8 +372,21 @@ export function routeArrows(
     const entryPool = pools.get(`${c.toId}-${c.entryEdge}`)!
     const exitIdx = exitPool.findIndex(s => s.ci === ci && s.role === 'exit')
     const entryIdx = entryPool.findIndex(s => s.ci === ci && s.role === 'entry')
-    const e1 = attach(c.fromId, c.fromRect, c.exitEdge, exitIdx, exitPool.length, c.anchor)
-    const e2 = attach(c.toId, c.toRect, c.entryEdge, entryIdx, entryPool.length, c.anchor)
+    let e1: Point, e2: Point
+    if (c.anchor !== undefined) {
+      // A straight arrow keeps one line on both ends: the slot of the busier
+      // edge applies to both, or ends at different heights would bend it
+      const across = c.exitEdge === 'left' || c.exitEdge === 'right'
+      const size = (r: Rect) => (across ? r.height : r.width)
+      const o1 = slotPos(exitIdx, exitPool.length, size(c.fromRect))
+      const o2 = slotPos(entryIdx, entryPool.length, size(c.toRect))
+      const anchor = c.anchor + (Math.abs(o1) >= Math.abs(o2) ? o1 : o2)
+      e1 = attach(c.fromId, c.fromRect, c.exitEdge, 0, 1, anchor)
+      e2 = attach(c.toId, c.toRect, c.entryEdge, 0, 1, anchor)
+    } else {
+      e1 = attach(c.fromId, c.fromRect, c.exitEdge, exitIdx, exitPool.length, c.anchor)
+      e2 = attach(c.toId, c.toRect, c.entryEdge, entryIdx, entryPool.length, c.anchor)
+    }
     let startOffset = c.headAtStart ? HEAD_GAP + HEAD_LENGTH : 0
     let endOffset = c.headAtEnd ? HEAD_GAP + HEAD_LENGTH : 0
     // Facing edges with a narrow gap between them (tight list rows): shrink the
@@ -355,6 +411,7 @@ export function routeArrows(
       d: `M ${p1.x} ${p1.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`,
       mid: bezierMid(p1, c1, c2, p2),
       vertical: (c.exitEdge === 'top' && c.entryEdge === 'bottom') || (c.exitEdge === 'bottom' && c.entryEdge === 'top'),
+      ...(facing !== null ? { span: facing } : {}),
     }
   })
 }

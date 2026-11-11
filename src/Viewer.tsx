@@ -249,12 +249,18 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
   // content, and empty columns and rows shrunk away (see .grid).
   const usedRows = Math.max(0, ...[...areas.values()].map(a => a.row + a.height))
   const covered = (test: (a: Area) => boolean) => [...areas.values()].some(test)
+  // Viewing, the rows below the last block are left out, so the blocks get
+  // the room; editing keeps all six to place blocks in
+  const fullRows = editing ? GRID_SIZE : Math.max(1, usedRows)
   const gridStyle = {
     gridTemplateColumns: editing
       ? `repeat(${GRID_SIZE}, minmax(0, 1fr))`
       : Array.from({ length: GRID_SIZE }, (_, c) =>
           covered(a => a.col <= c && c < a.col + a.width) ? 'minmax(0, 1fr)' : 'var(--ts-empty-col)').join(' '),
-    '--ts-rows-full': `repeat(${GRID_SIZE}, minmax(0, 1fr))`,
+    '--ts-rows-full': `repeat(${fullRows}, minmax(0, 1fr))`,
+    // How many times the six rows are taller than the rows shown: the grid
+    // keeps the proportions of its cells, not of the whole 6×6 grid
+    '--ts-row-share': GRID_SIZE / fullRows,
     '--ts-rows-compact': Array.from({ length: Math.max(1, usedRows) }, (_, r) =>
       covered(a => a.row <= r && r < a.row + a.height) ? 'auto' : '0px').join(' '),
   } as React.CSSProperties

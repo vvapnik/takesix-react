@@ -301,8 +301,10 @@
      bounds instead of stretching with it, centred */
   flex: none;
   --ts-grid-margin: clamp(24px, 4cqi, 56px);
-  width: min(calc(100cqw - 2 * var(--ts-grid-margin)), 200cqh);
-  height: min(calc(100cqw - 2 * var(--ts-grid-margin)), 100cqh);
+  /* With fewer rows shown (see --ts-row-share) the bounds scale with them */
+  --ts-row-share: 1;
+  width: min(calc(100cqw - 2 * var(--ts-grid-margin)), calc(200cqh * var(--ts-row-share)));
+  height: min(calc((100cqw - 2 * var(--ts-grid-margin)) / var(--ts-row-share)), 100cqh);
   align-self: center;
   margin-block: auto;
   /* room beside the outer columns for an arrow going around blocks (the way

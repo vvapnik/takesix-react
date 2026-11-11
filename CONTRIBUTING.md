@@ -89,3 +89,22 @@ Do not add `Co-Authored-By` trailers (or similar attribution lines) for AI
 models or coding assistants. Commits are authored by the person who submits
 them, and that person is responsible for the change. `Co-Authored-By` is for
 human co-authors only.
+
+## Releases
+
+Releases are automated with
+[release-please](https://github.com/googleapis/release-please). Nobody edits
+the version or the changelog by hand.
+
+1. Every push to `main` updates a Release PR titled `chore(release): X.Y.Z`.
+   The version follows from the commit types since the last release (see
+   [Types](#types)); the PR bumps the version in `package.json` and
+   adds the `feat`, `fix` and `perf` commits to `CHANGELOG.md`.
+2. To release, squash-merge the Release PR. `publish.yml` then tags
+   `vX.Y.Z`, creates the GitHub Release, runs CI and publishes to npm with
+   provenance. Versions with a pre-release part (`1.1.0-beta.1`) go to the
+   `next` dist-tag.
+
+To force a version, add a `Release-As: 2.0.0` footer to a commit. Settings
+are in `release-please-config.json`; `.release-please-manifest.json` holds
+the last released version.

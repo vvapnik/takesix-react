@@ -3,7 +3,7 @@
 > TakeSix is an open format and libraries that let an AI agent answer with a diagram you can click into instead of a wall of text: at most six blocks per screen, and any block opens into up to six more.
 > **[takesix.vapnik.de](https://takesix.vapnik.de/)** · [FAQ](https://takesix.vapnik.de/faq/)
 
-![TakeSix: answers as diagrams, not walls of text. Six blocks of a checkout diagram with arrows.](https://takesix.vapnik.de/og.png)
+[![A TakeSix diagram of a web app architecture: a click zooms into a block, into one of its parts, into its text, and back to the top.](https://takesix.vapnik.de/demo.gif)](https://takesix.vapnik.de/examples/architecture/)
 
 React viewer and editor for [takesix](https://github.com/vvapnik/takesix-core)
 diagrams. One screen shows at most **6 blocks**; click a block to zoom into
@@ -17,6 +17,18 @@ the editor.
 The document format and all editing logic live in
 [`@takesix/core`](https://github.com/vvapnik/takesix-core); this package only
 renders and edits.
+
+## Examples
+
+Live on the site, each with its `.takesix.json` and the prompt that gets one
+like it from an agent:
+
+| Example | What it shows |
+|---|---|
+| [Architecture](https://takesix.vapnik.de/examples/architecture/) | A SaaS web app layer by layer, from the clients down to the data |
+| [Data model](https://takesix.vapnik.de/examples/data-model/) | A shop database: the tables and their relations, the columns inside |
+| [Presentation](https://takesix.vapnik.de/examples/presentation/) | A team talk: the parts in order, slides and speaker notes inside |
+| [To-do list](https://takesix.vapnik.de/examples/todo/) | A website launch in stages, a status on every task |
 
 ## Install
 

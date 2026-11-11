@@ -1,6 +1,6 @@
 {
   "name": "@takesix/react",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "React viewer and editor for TakeSix diagrams. TakeSix is an open format and libraries that let an AI agent answer with a diagram you can click into instead of a wall of text: at most six blocks per screen, and any block opens into up to six more.",
   "homepage": "https://takesix.vapnik.de/",
   "type": "module",

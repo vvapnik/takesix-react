@@ -200,6 +200,7 @@
   stroke: var(--ts-accent);
   stroke-width: 3;
   stroke-opacity: 0.8;
+  stroke-linejoin: round;
 }
 
 .arrowSvgEditing .arrowHit {
@@ -215,13 +216,14 @@
   stroke-width: 3;
 }
 
-.arrowSvgEditing .arrowLabel {
+.arrowLabelsEditing .arrowLabel {
   pointer-events: auto;
   cursor: pointer;
 }
 
-.arrowLabelOpen {
+.arrowLabel.arrowLabelOpen {
   font-weight: 700;
+  border-color: var(--ts-accent);
 }
 
 /* Link styles: a dashed or dotted line */
@@ -237,6 +239,10 @@
 
 .arrowHead {
   fill: var(--ts-accent);
+  /* rounds the tip and the barbs a little */
+  stroke: var(--ts-accent);
+  stroke-width: 1;
+  stroke-linejoin: round;
 }
 
 /* Editing: an arrow that runs through a block or crosses another */
@@ -247,16 +253,33 @@
 
 .arrowHeadWarn {
   fill: var(--ts-warning);
+  stroke: var(--ts-warning);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+/* Labels of the arrows: pills over the lines (see the label layer) */
+.arrowLabels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
 }
 
 .arrowLabel {
+  position: absolute;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 7px 2px;
+  border: 1px solid color-mix(in srgb, var(--ts-accent) 35%, var(--ts-bg));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ts-accent) 8%, var(--ts-bg));
+  color: var(--ts-accent);
   font-size: 11px;
   font-weight: 500;
-  fill: var(--ts-accent);
-  paint-order: stroke;
-  stroke: var(--ts-bg);
-  stroke-width: 4px;
-  stroke-linejoin: round;
+  line-height: 15px;
 }
 
 .empty {

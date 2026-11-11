@@ -48,8 +48,11 @@ export const HEAD_LENGTH = 13
 /** Width of the arrowhead at its base. */
 export const HEAD_WIDTH = 11
 
-/** Shortest visible line left between two arrowheads. */
-const MIN_LINE = 2
+/** How far the barbs of an arrowhead sweep back past the path's end. */
+export const HEAD_SWEEP = 4
+
+/** Shortest visible line left between two arrowheads, besides their barbs. */
+const MIN_LINE = 1
 
 /** Distance between two facing edges (right → left, bottom → top…), or null if they do not face each other. */
 function facingGap(exit: Edge, entry: Edge, p1: Point, p2: Point): number | null {
@@ -212,29 +215,64 @@ export function determineEdges(fromRect: Rect, toRect: Rect, obstacleRects: Rect
   return { exitEdge: best.edge, entryEdge: best.edge, lane: best.lane }
 }
 
+/** Radius of the rounded corners of an arrow. */
+const CORNER_RADIUS = 10
+
 /**
- * SVG path of a detour from `p1` to `p2` along `lane`, with rounded corners:
- * out to the lane, along it, back in.
+ * SVG path through `points` (an orthogonal polyline) with rounded corners:
+ * each corner as round as the segments beside it leave room for.
  */
-function detourPath(p1: Point, p2: Point, lane: number, alongX: boolean): { d: string; mid: Point } {
-  const c1 = alongX ? { x: lane, y: p1.y } : { x: p1.x, y: lane }
-  const c2 = alongX ? { x: lane, y: p2.y } : { x: p2.x, y: lane }
+export function roundedPath(points: Point[], radius = CORNER_RADIUS): string {
   const len = (a: Point, b: Point) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
-  const r = Math.max(0, Math.min(DETOUR_RADIUS, len(p1, c1), len(c1, c2) / 2, len(c2, p2)))
   // A point `d` from `a` towards `b`
   const toward = (a: Point, b: Point, d: number): Point => {
     const l = len(a, b) || 1
     return { x: a.x + ((b.x - a.x) / l) * d, y: a.y + ((b.y - a.y) / l) * d }
   }
-  const a1 = toward(c1, p1, r)
-  const b1 = toward(c1, c2, r)
-  const a2 = toward(c2, c1, r)
-  const b2 = toward(c2, p2, r)
-  return {
-    d: `M ${p1.x} ${p1.y} L ${a1.x} ${a1.y} Q ${c1.x} ${c1.y} ${b1.x} ${b1.y} ` +
-      `L ${a2.x} ${a2.y} Q ${c2.x} ${c2.y} ${b2.x} ${b2.y} L ${p2.x} ${p2.y}`,
-    mid: { x: (c1.x + c2.x) / 2, y: (c1.y + c2.y) / 2 },
+  const first = points[0]!
+  let d = `M ${first.x} ${first.y}`
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = points[i - 1]!
+    const corner = points[i]!
+    const next = points[i + 1]!
+    // The outer segments end at a card: the whole of them is free; the inner
+    // ones are shared between two corners
+    const before = i === 1 ? len(prev, corner) : len(prev, corner) / 2
+    const after = i === points.length - 2 ? len(corner, next) : len(corner, next) / 2
+    const r = Math.max(0, Math.min(radius, before, after))
+    const a = toward(corner, prev, r)
+    const b = toward(corner, next, r)
+    d += ` L ${a.x} ${a.y} Q ${corner.x} ${corner.y} ${b.x} ${b.y}`
   }
+  const last = points[points.length - 1]!
+  return `${d} L ${last.x} ${last.y}`
+}
+
+/** Middle of the segment between two points. */
+function middle(a: Point, b: Point): Point {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+}
+
+/** How far from its card a sideways arrow turns towards the other card. */
+export const BEND_REACH = 32
+
+/**
+ * Corners of an orthogonal arrow from `p1` (on `exitEdge`) to `p2`: straight
+ * when the ends line up, else out, over and in. A sideways arrow turns soon
+ * after leaving its card (halfway, when the cards are closer), so arrows out
+ * of one side fork like branches and run level into their cards; one up or
+ * down turns halfway, in the gap between the rows.
+ */
+export function orthogonalPoints(exitEdge: Edge, p1: Point, p2: Point): Point[] {
+  const across = exitEdge === 'left' || exitEdge === 'right'
+  if (across ? p1.y === p2.y : p1.x === p2.x) return [p1, p2]
+  if (across) {
+    const dx = p2.x - p1.x
+    const x = p1.x + Math.sign(dx) * Math.min(Math.abs(dx) / 2, BEND_REACH)
+    return [p1, { x, y: p1.y }, { x, y: p2.y }, p2]
+  }
+  const y = (p1.y + p2.y) / 2
+  return [p1, { x: p1.x, y }, { x: p2.x, y }, p2]
 }
 
 /** A point on a card edge: at `anchor` (or the edge's middle), moved by its slot. */
@@ -246,47 +284,6 @@ export function edgePoint(rect: Rect, edge: Edge, idx: number, total: number, or
     case 'left':   return { x: rect.left - origin.x,  y: cy - origin.y + slotPos(idx, total, rect.height) }
     case 'bottom': return { x: cx - origin.x + slotPos(idx, total, rect.width), y: rect.bottom - origin.y }
     case 'top':    return { x: cx - origin.x + slotPos(idx, total, rect.width), y: rect.top - origin.y }
-  }
-}
-
-/** Cubic Bézier control points from `p1` (on `exitEdge`) to `p2` (on `entryEdge`). */
-export function controlPoints(
-  fromRect: Rect,
-  toRect: Rect,
-  origin: Point,
-  exitEdge: Edge,
-  entryEdge: Edge,
-  p1: Point,
-  p2: Point,
-): [Point, Point] {
-  if (exitEdge === 'bottom' && entryEdge === 'bottom') {
-    const arcY = Math.max(p1.y, p2.y) + 32
-    return [{ x: p1.x, y: arcY }, { x: p2.x, y: arcY }]
-  }
-
-  if (exitEdge === 'right' || exitEdge === 'left') {
-    const toCX = (toRect.left + toRect.right) / 2
-    const fromCX = (fromRect.left + fromRect.right) / 2
-    const s = exitEdge === 'right' ? 1 : -1
-    let offset = Math.min(Math.abs(toCX - fromCX) * 0.4, 80)
-    // A short arrow ahead: control points past each other would run the curve
-    // backwards, into the card it leaves
-    const ahead = s * (p2.x - p1.x)
-    if (ahead > 0) offset = Math.min(offset, ahead / 2)
-    return [{ x: p1.x + s * offset, y: p1.y }, { x: p2.x - s * offset, y: p2.y }]
-  }
-
-  // Between the path's own ends, not the card edges: the ends may be pulled
-  // back for arrowheads, and a control point beyond an end turns the head around.
-  const midY = (p1.y + p2.y) / 2
-  return [{ x: p1.x, y: midY }, { x: p2.x, y: midY }]
-}
-
-/** Point of a cubic Bézier at t = 0.5. */
-export function bezierMid(p0: Point, c1: Point, c2: Point, p3: Point): Point {
-  return {
-    x: (p0.x + 3 * c1.x + 3 * c2.x + p3.x) / 8,
-    y: (p0.y + 3 * c1.y + 3 * c2.y + p3.y) / 8,
   }
 }
 
@@ -366,6 +363,18 @@ export function routeArrows(
     join(`${c.fromId}-${c.exitEdge}`, ci, 'exit')
     join(`${c.toId}-${c.entryEdge}`, ci, 'entry')
   })
+  // Along each edge, the slots go in the order of the cards at the other
+  // ends: an arrow to a card higher up leaves above one to a card lower down,
+  // so arrows out of (or into) one side never cross each other
+  for (const [k, pool] of pools) {
+    const edge = k.slice(k.lastIndexOf('-') + 1) as Edge
+    const across = edge === 'left' || edge === 'right'
+    const other = ({ ci, role }: { ci: number; role: 'exit' | 'entry' }) => {
+      const r = role === 'exit' ? conns[ci]!.toRect : conns[ci]!.fromRect
+      return across ? (r.top + r.bottom) / 2 : (r.left + r.right) / 2
+    }
+    pool.sort((a, b) => other(a) - other(b))
+  }
 
   return conns.map((c, ci) => {
     const exitPool = pools.get(`${c.fromId}-${c.exitEdge}`)!
@@ -392,8 +401,10 @@ export function routeArrows(
     // Facing edges with a narrow gap between them (tight list rows): shrink the
     // offsets to fit, or the path would run backwards and flip the heads.
     const facing = facingGap(c.exitEdge, c.entryEdge, e1, e2)
-    if (facing !== null && startOffset + endOffset > facing - MIN_LINE) {
-      const k = Math.max(0, facing - MIN_LINE) / (startOffset + endOffset)
+    // The line also holds the barbs that sweep back from each head
+    const minLine = MIN_LINE + HEAD_SWEEP * (Number(!!c.headAtStart) + Number(!!c.headAtEnd))
+    if (facing !== null && startOffset + endOffset > facing - minLine) {
+      const k = Math.max(0, facing - minLine) / (startOffset + endOffset)
       startOffset *= k
       endOffset *= k
     }
@@ -402,16 +413,33 @@ export function routeArrows(
     if (c.lane !== undefined) {
       const alongX = c.exitEdge === 'left' || c.exitEdge === 'right'
       const lane = c.lane - (alongX ? origin.x : origin.y)
-      const { d, mid } = detourPath(p1, p2, lane, alongX)
-      return { key: c.key, d, mid, vertical: alongX, ...(c.exitEdge === 'left' ? { detourLeft: true } : {}) }
+      // Out to the lane, along it, back in
+      const c1 = alongX ? { x: lane, y: p1.y } : { x: p1.x, y: lane }
+      const c2 = alongX ? { x: lane, y: p2.y } : { x: p2.x, y: lane }
+      return {
+        key: c.key,
+        d: roundedPath([p1, c1, c2, p2], DETOUR_RADIUS),
+        mid: middle(c1, c2),
+        vertical: alongX,
+        ...(c.exitEdge === 'left' ? { detourLeft: true } : {}),
+      }
     }
-    const [c1, c2] = controlPoints(c.fromRect, c.toRect, origin, c.exitEdge, c.entryEdge, p1, p2)
+    const points = orthogonalPoints(c.exitEdge, p1, p2)
+    const across = c.exitEdge === 'left' || c.exitEdge === 'right'
+    const bent = points.length > 2
+    // Where the label sits: halfway along a straight arrow; on a bent one,
+    // on its last leg into the card (sideways) or the stretch across between
+    // the rows (up or down)
+    const leg: [Point, Point] = !bent ? [p1, p2] : across ? [points[2]!, p2] : [points[1]!, points[2]!]
+    const legLength = Math.abs(leg[1].x - leg[0].x) + Math.abs(leg[1].y - leg[0].y)
     return {
       key: c.key,
-      d: `M ${p1.x} ${p1.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`,
-      mid: bezierMid(p1, c1, c2, p2),
-      vertical: (c.exitEdge === 'top' && c.entryEdge === 'bottom') || (c.exitEdge === 'bottom' && c.entryEdge === 'top'),
-      ...(facing !== null ? { span: facing } : {}),
+      d: roundedPath(points),
+      mid: middle(...leg),
+      // Only a straight arrow up or down has its label beside it
+      vertical: !bent && !across,
+      // The room the label has: the gap between the cards, or the last leg
+      ...(bent && across ? { span: legLength } : facing !== null ? { span: facing } : {}),
     }
   })
 }

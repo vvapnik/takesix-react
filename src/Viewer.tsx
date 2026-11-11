@@ -25,7 +25,7 @@ import {
 } from '@takesix/core'
 import { BlockCard, areaStyle, type CardRect, type Cell } from './BlockCard.js'
 import { ZOOM_EASE, ZOOM_MS } from './motion.js'
-import { HEAD_LENGTH, HEAD_WIDTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
+import { HEAD_LENGTH, HEAD_SWEEP, HEAD_WIDTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
 import { fitZoom } from './fit.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
 import { ShapeMenu } from './ShapeMenu.js'
@@ -97,6 +97,27 @@ const LABEL_GAP = 8
 
 /** Rough width of a label character (11px, medium weight). */
 const LABEL_CHAR = 6.5
+
+/** Horizontal padding of a label's pill, on both sides together. */
+const LABEL_PAD = 14
+
+/**
+ * The TakeSix arrowhead: a dart whose barbs sweep back along the line, with
+ * a notch between them. The tip is where the path's head ends (HEAD_LENGTH
+ * past its end); the notch reaches just past the end, so no gap shows.
+ */
+const HEAD_PATH = `M ${-HEAD_SWEEP} 0 L ${HEAD_LENGTH} ${HEAD_WIDTH / 2} L ${-HEAD_SWEEP} ${HEAD_WIDTH} L 0.5 ${HEAD_WIDTH / 2} Z`
+
+/** Marker attributes for HEAD_PATH: the line's end at x 0 (the notch). */
+const HEAD_MARKER = {
+  viewBox: `${-HEAD_SWEEP - 1} -1 ${HEAD_LENGTH + HEAD_SWEEP + 2} ${HEAD_WIDTH + 2}`,
+  markerWidth: HEAD_LENGTH + HEAD_SWEEP + 2,
+  markerHeight: HEAD_WIDTH + 2,
+  refX: 0,
+  refY: HEAD_WIDTH / 2,
+  orient: 'auto-start-reverse',
+  markerUnits: 'userSpaceOnUse',
+} as const
 
 function arrowLabel(link: VisibleLink): string | undefined {
   const labels = [...new Set(link.links.map(l => l.label).filter((l): l is string => !!l))]
@@ -948,11 +969,11 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
             <svg className={`${styles.arrowSvg} ${editing ? styles.arrowSvgEditing : ''}`} aria-hidden={editing ? undefined : true}>
               <defs>
                 {/* Base of the head at the path end (refX 0): the head continues the line. */}
-                <marker id={markerId} markerWidth={HEAD_LENGTH} markerHeight={HEAD_WIDTH} refX="0" refY={HEAD_WIDTH / 2} orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                  <path d={`M 0 0 L ${HEAD_LENGTH} ${HEAD_WIDTH / 2} L 0 ${HEAD_WIDTH} Z`} className={styles.arrowHead} />
+                <marker id={markerId} {...HEAD_MARKER}>
+                  <path d={HEAD_PATH} className={styles.arrowHead} />
                 </marker>
-                <marker id={warnMarkerId} markerWidth={HEAD_LENGTH} markerHeight={HEAD_WIDTH} refX="0" refY={HEAD_WIDTH / 2} orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                  <path d={`M 0 0 L ${HEAD_LENGTH} ${HEAD_WIDTH / 2} L 0 ${HEAD_WIDTH} Z`} className={styles.arrowHeadWarn} />
+                <marker id={warnMarkerId} {...HEAD_MARKER}>
+                  <path d={HEAD_PATH} className={styles.arrowHeadWarn} />
                 </marker>
               </defs>
               {arrows.map(a => {
@@ -980,32 +1001,39 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
                     markerEnd={a.link.direction !== 'none' ? head : undefined}
                     markerStart={a.link.direction === 'both' ? head : undefined}
                   />
-                  {a.label && (() => {
-                    // Vertical arrows often cross a narrow gap between rows: label beside
-                    // the arrow. A detour on the left has the cards on its right: label
-                    // outside it, or on the line itself when the level's edge is too close.
-                    const room = a.mid.x - LABEL_GAP
-                    const anchor = !a.vertical ? 'middle'
-                      : !a.detourLeft ? 'start'
-                      : room >= a.label.length * LABEL_CHAR ? 'end' : 'middle'
-                    const x = anchor === 'start' ? a.mid.x + LABEL_GAP : anchor === 'end' ? a.mid.x - LABEL_GAP : a.mid.x
-                    return (
-                    <text
-                      x={x}
-                      y={a.mid.y}
-                      className={`${styles.arrowLabel} ${openArrow === pairKey(a.link) ? styles.arrowLabelOpen : ''}`}
-                      onClick={editing ? e => { e.stopPropagation(); setOpenArrow(pairKey(a.link)) } : undefined}
-                      textAnchor={anchor}
-                      dominantBaseline="middle"
-                    >
-                      {a.label}
-                    </text>
-                    )
-                  })()}
                 </g>
                 )
               })}
             </svg>
+          )}
+
+          {arrows.some(a => a.label) && (
+            // Labels in pills over the lines: HTML, so a pill fits its text
+            <div className={`${styles.arrowLabels} ${editing ? styles.arrowLabelsEditing : ''}`} aria-hidden={editing ? undefined : true}>
+              {arrows.map(a => {
+                if (!a.label) return null
+                // Vertical arrows often cross a narrow gap between rows: label beside
+                // the arrow. A detour on the left has the cards on its right: label
+                // outside it, or on the line itself when the level's edge is too close.
+                const room = a.mid.x - LABEL_GAP
+                const anchor = !a.vertical ? 'middle'
+                  : !a.detourLeft ? 'start'
+                  : room >= a.label.length * LABEL_CHAR + LABEL_PAD ? 'end' : 'middle'
+                const x = anchor === 'start' ? a.mid.x + LABEL_GAP : anchor === 'end' ? a.mid.x - LABEL_GAP : a.mid.x
+                const shift = anchor === 'start' ? '0' : anchor === 'end' ? '-100%' : '-50%'
+                return (
+                  <span
+                    key={a.key}
+                    data-link={a.key}
+                    className={`${styles.arrowLabel} ${openArrow === pairKey(a.link) ? styles.arrowLabelOpen : ''}`}
+                    style={{ left: x, top: a.mid.y, transform: `translate(${shift}, -50%)` }}
+                    onClick={editing ? e => { e.stopPropagation(); setOpenArrow(pairKey(a.link)) } : undefined}
+                  >
+                    {a.label}
+                  </span>
+                )
+              })}
+            </div>
           )}
 
           {(() => {

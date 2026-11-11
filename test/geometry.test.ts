@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bezierMid, controlPoints, determineEdges, IO_SKEW, routeArrows, type Rect } from '../src/geometry.js'
+import { determineEdges, IO_SKEW, orthogonalPoints, roundedPath, routeArrows, type Rect } from '../src/geometry.js'
 
 function rect(left: number, top: number, width = 100, height = 60): Rect {
   return { left, top, width, height, right: left + width, bottom: top + height }
@@ -48,13 +48,53 @@ describe('determineEdges', () => {
   })
 })
 
-describe('bezierMid', () => {
-  it('is the middle of a straight curve', () => {
-    expect(bezierMid({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }, { x: 30, y: 0 })).toEqual({ x: 15, y: 0 })
+describe('roundedPath', () => {
+  it('rounds each corner of an orthogonal polyline', () => {
+    expect(roundedPath([{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 40 }, { x: 100, y: 40 }]))
+      .toBe('M 0 0 L 40 0 Q 50 0 50 10 L 50 30 Q 50 40 60 40 L 100 40')
+  })
+
+  it('keeps the corners as round as short segments allow', () => {
+    // a 6px step: each corner gets half of it
+    expect(roundedPath([{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 6 }, { x: 100, y: 6 }]))
+      .toBe('M 0 0 L 47 0 Q 50 0 50 3 L 50 3 Q 50 6 53 6 L 100 6')
+  })
+
+  it('draws a straight line without corners', () => {
+    expect(roundedPath([{ x: 0, y: 0 }, { x: 100, y: 0 }])).toBe('M 0 0 L 100 0')
+  })
+})
+
+describe('orthogonalPoints', () => {
+  it('turns soon after leaving a card sideways, halfway up or down', () => {
+    expect(orthogonalPoints('right', { x: 0, y: 0 }, { x: 200, y: 80 }))
+      .toEqual([{ x: 0, y: 0 }, { x: 32, y: 0 }, { x: 32, y: 80 }, { x: 200, y: 80 }])
+    // cards closer than twice the reach: halfway
+    expect(orthogonalPoints('left', { x: 40, y: 0 }, { x: 0, y: 80 }))
+      .toEqual([{ x: 40, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 80 }, { x: 0, y: 80 }])
+    expect(orthogonalPoints('bottom', { x: 0, y: 0 }, { x: 100, y: 80 }))
+      .toEqual([{ x: 0, y: 0 }, { x: 0, y: 40 }, { x: 100, y: 40 }, { x: 100, y: 80 }])
+  })
+
+  it('stays straight when the ends line up', () => {
+    expect(orthogonalPoints('left', { x: 100, y: 30 }, { x: 0, y: 30 })).toEqual([{ x: 100, y: 30 }, { x: 0, y: 30 }])
   })
 })
 
 describe('routeArrows', () => {
+  it('orders the arrows out of one side by where they go, so they do not cross', () => {
+    // a → low listed first, a → high second: the one to the higher card still leaves higher up
+    const rects = new Map([['a', rect(0, 100)], ['low', rect(300, 160)], ['high', rect(300, 0)]])
+    const paths = routeArrows([
+      { key: 'a|low', fromId: 'a', toId: 'low' },
+      { key: 'a|high', fromId: 'a', toId: 'high' },
+    ], rects, container)
+    const startY = (d: string) => Number(d.split(' ')[2])
+    const low = paths.find(p => p.key === 'a|low')!
+    const high = paths.find(p => p.key === 'a|high')!
+    expect(startY(high.d)).toBeLessThan(startY(low.d))
+  })
+
   it('keeps a straight arrow straight when its edge is shared with another arrow', () => {
     // a → b straight across; b → c leaves through the same left edge of b
     const rects = new Map([['a', rect(0, 0)], ['b', rect(300, 0)], ['c', rect(0, 200)]])
@@ -80,18 +120,19 @@ describe('routeArrows', () => {
     ], rects, rect(0, 0, 800, 800))
     const cd = paths.find(p => p.key === 'c|d')!
     // leaves the bottom of c (y 60), ends above the top of d (y 200)
-    expect(cd.d).toMatch(/^M 450 60 C /)
-    expect(cd.vertical).toBe(true)
+    expect(cd.d).toMatch(/^M 450 60 L /)
+    // bent: its label sits on the stretch across, not beside it
+    expect(cd.vertical).toBe(false)
     // with nothing on the side edges, across stays
     const [alone] = routeArrows([{ key: 'c|d', fromId: 'c', toId: 'd' }], rects, rect(0, 0, 800, 800))
-    expect(alone!.d).toMatch(/^M 400 30 C /)
+    expect(alone!.d).toMatch(/^M 400 30 L /)
   })
 
   it('draws from edge to edge, relative to the container', () => {
     const rects = new Map([['a', rect(100, 100)], ['b', rect(300, 100)]])
     const [arrow] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b' }], rects, rect(100, 100, 800, 800))
     expect(arrow!.key).toBe('a|b')
-    expect(arrow!.d).toMatch(/^M 100 30 C .* 200 30$/)
+    expect(arrow!.d).toBe('M 100 30 L 200 30')
     expect(arrow!.mid).toEqual({ x: 150, y: 30 })
     expect(arrow!.vertical).toBe(false)
   })
@@ -111,9 +152,9 @@ describe('routeArrows', () => {
     const rects = new Map([['a', rect(100, 100)], ['b', rect(300, 100)]])
     const box = rect(100, 100, 800, 800)
     const [end] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b', headAtEnd: true }], rects, box)
-    expect(end!.d).toMatch(/^M 100 30 C .* 183 30$/)
+    expect(end!.d).toBe('M 100 30 L 183 30')
     const [both] = routeArrows([{ key: 'a|b', fromId: 'a', toId: 'b', headAtStart: true, headAtEnd: true }], rects, box)
-    expect(both!.d).toMatch(/^M 117 30 C .* 183 30$/)
+    expect(both!.d).toBe('M 117 30 L 183 30')
   })
 
   it('shrinks the head offsets to fit a narrow gap instead of running backwards', () => {
@@ -166,18 +207,5 @@ describe('routeArrows (shapes and detours)', () => {
     expect(arrow!.d).toMatch(/^M 200 230 L 260 230 Q 270 230 270 220 L 270 40 Q 270 30 260 30 L 217 30$/)
     expect(arrow!.mid).toEqual({ x: 270, y: 130 })
     expect(arrow!.vertical).toBe(true)
-  })
-})
-
-describe('controlPoints', () => {
-  it('keeps a short side-to-side arrow from running back into its card', () => {
-    const from = { left: 0, top: 0, right: 100, bottom: 50, width: 100, height: 50 }
-    const to = { left: 130, top: 0, right: 230, bottom: 50, width: 100, height: 50 }
-    const p1 = { x: 100, y: 25 }
-    const p2 = { x: 115, y: 25 }
-    const [c1, c2] = controlPoints(from, to, { x: 0, y: 0 }, 'right', 'left', p1, p2)
-    expect(c1.x).toBeLessThanOrEqual(c2.x)
-    expect(c1.x).toBeGreaterThanOrEqual(p1.x)
-    expect(c2.x).toBeLessThanOrEqual(p2.x)
   })
 })

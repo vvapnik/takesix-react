@@ -24,6 +24,7 @@ import {
   type VisibleLink,
 } from '@takesix/core'
 import { BlockCard, areaStyle, type CardRect, type Cell } from './BlockCard.js'
+import { ZOOM_EASE, ZOOM_MS } from './motion.js'
 import { HEAD_LENGTH, HEAD_WIDTH, routeArrows, type ArrowPath, type Rect } from './geometry.js'
 import { fitZoom } from './fit.js'
 import { LinkPopover, type LinkEdit } from './LinkPopover.js'
@@ -283,10 +284,11 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
         if (!card) { done(); return }
         const from = ghost.el.getBoundingClientRect()
         const to = card.getBoundingClientRect()
-        ghost.el.style.transition = 'transform 0.35s cubic-bezier(0.4, 0, 0.8, 0), opacity 0.12s linear 0.25s'
+        // The same zoom as into a block, the left screen fading out in its last third
+        ghost.el.style.transition = `transform ${ZOOM_MS}ms ${ZOOM_EASE}, opacity ${ZOOM_MS / 3}ms linear ${(ZOOM_MS * 2) / 3}ms`
         ghost.el.style.transform = `translate(${to.left + to.width / 2 - (from.left + from.width / 2)}px, ${to.top + to.height / 2 - (from.top + from.height / 2)}px) scale(${to.width / from.width}, ${to.height / from.height})`
         ghost.el.style.opacity = '0'
-        setTimeout(done, 380)
+        setTimeout(done, ZOOM_MS + 30)
       })
     }
 
@@ -313,7 +315,7 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
 
     // Animate to natural position
     requestAnimationFrame(() => {
-      slide.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)'
+      slide.style.transition = `transform ${ZOOM_MS}ms ${ZOOM_EASE}`
       slide.style.transform = ''
       // Only the slide's own zoom ends the animation: transitions of the cards
       // inside (hover under the cursor) bubble up here too, and settling on

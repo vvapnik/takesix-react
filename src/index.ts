@@ -4,3 +4,4 @@ export { createEditorLink, encodeDocument, readDocumentFromHash, DEFAULT_EDITOR_
 export type { TakeSixDocument, Block, Link, ViewAddress } from '@takesix/core'
 export { screenLink } from './address.js'
 export { PRELOADER_HTML, preloaderErrorHtml } from './preloader.js'
+export { ZOOM_MS, ZOOM_EASE } from './motion.js'

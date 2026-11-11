@@ -394,14 +394,15 @@ describe('TakeSix (editing)', () => {
       title: 'Row',
       blocks: [
         { id: 'a', title: 'A', at: 'A1' },
-        { id: 'b', title: 'B', at: 'B2' },
+        // the bent arrow a → c turns beside "a" and runs along row 3, through "b"
+        { id: 'b', title: 'B', at: 'B3' },
         { id: 'c', title: 'C', at: 'C3' },
       ],
       links: [{ id: 'l', from: 'a', to: 'c' }],
     }
     // Arrows are routed from card rects: give the cards some in jsdom
     const rects: Record<string, DOMRect> = {
-      a: new DOMRect(0, 0, 100, 60), b: new DOMRect(150, 100, 100, 60), c: new DOMRect(300, 200, 100, 60),
+      a: new DOMRect(0, 0, 100, 60), b: new DOMRect(150, 200, 100, 60), c: new DOMRect(300, 200, 100, 60),
     }
     const original = HTMLElement.prototype.getBoundingClientRect
     HTMLElement.prototype.getBoundingClientRect = function () {

@@ -59,10 +59,12 @@
   box-shadow: 0 0 0 1.5px var(--ts-accent);
 }
 
-/* Full-screen backdrop — click outside the card to zoom out */
+/* Full-screen backdrop — click outside the card to zoom out. It reaches over
+   the TakeSix padding around the viewer, so the whole strip beside the card
+   zooms out too. */
 .backdrop {
   position: absolute;
-  inset: 0;
+  inset: calc(-1 * var(--ts-pad-top, 0px)) calc(-1 * var(--ts-pad-x, 0px)) calc(-1 * var(--ts-pad-bottom, 0px));
   cursor: zoom-out;
   z-index: 1;
 }

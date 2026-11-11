@@ -27,7 +27,11 @@
 
   height: 100%;
   min-height: 0;
-  padding: 12px 40px 24px;
+  /* Also read by the Viewer: its zoom-out backdrop covers this padding too */
+  --ts-pad-top: 12px;
+  --ts-pad-x: 40px;
+  --ts-pad-bottom: 24px;
+  padding: var(--ts-pad-top) var(--ts-pad-x) var(--ts-pad-bottom);
   box-sizing: border-box;
   background: var(--ts-bg);
   color: var(--ts-text);

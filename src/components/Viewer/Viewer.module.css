@@ -318,7 +318,7 @@
   --ts-empty-col: minmax(0, 1fr);
   flex: 1;
   display: grid;
-  grid-template-rows: var(--ts-rows-full);
+  grid-template-rows: repeat(6, minmax(0, 1fr));
   /* room for a short arrow between neighbours; empty cells make more room */
   column-gap: 28px;
   /* room for an arrow between rows, with its head and label */
@@ -330,18 +330,16 @@
      bounds instead of stretching with it, centred */
   flex: none;
   --ts-grid-margin: clamp(24px, 4cqi, 56px);
-  /* With fewer rows shown (see --ts-row-share) the bounds scale with them */
-  --ts-row-share: 1;
   /* Never shorter than this: a row keeps room for an icon, a title and the
-     footer. A shorter screen scrolls the level (see .gridArea), and the grid
-     stays at least as wide as it is tall. --ts-rows comes from the Viewer. */
+     footer. On a shorter screen the whole TakeSix scrolls (see .viewer), and
+     the grid stays at least as wide as it is tall. */
   --ts-row-min: 64px;
-  --ts-grid-min-height: calc(var(--ts-rows, 6) * var(--ts-row-min) + (var(--ts-rows, 6) - 1) * 24px);
+  --ts-grid-min-height: calc(6 * var(--ts-row-min) + 5 * 24px);
   width: min(
     calc(100cqw - 2 * var(--ts-grid-margin)),
-    max(calc(200cqh * var(--ts-row-share)), var(--ts-grid-min-height))
+    max(200cqh, var(--ts-grid-min-height))
   );
-  height: min(calc((100cqw - 2 * var(--ts-grid-margin)) / var(--ts-row-share)), 100cqh);
+  height: min(calc(100cqw - 2 * var(--ts-grid-margin)), 100cqh);
   min-height: var(--ts-grid-min-height);
   align-self: center;
   margin-block: auto;

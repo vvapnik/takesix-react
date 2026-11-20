@@ -474,14 +474,14 @@ describe('TakeSix (editing)', () => {
   it('changes the shape of a block from their outlines, plain card back included', async () => {
     const { user, latest } = renderEditable()
     await user.click(screen.getByRole('button', { name: 'Shape of Database: Process' }))
-    const menu = screen.getByRole('dialog', { name: 'Shape' })
+    const menu = screen.getByRole('dialog', { name: 'Shape and colour' })
     expect(within(menu).getByRole('radio', { name: 'Process' })).toHaveAttribute('aria-checked', 'true')
-    expect(within(menu).getAllByRole('radio')).toHaveLength(7)
+    expect(within(within(menu).getByRole('radiogroup', { name: 'Shape' })).getAllByRole('radio')).toHaveLength(7)
 
     await user.click(within(menu).getByRole('radio', { name: 'Decision' }))
     expect(latest.doc.blocks[2]!.shape).toBe('decision')
     expect(document.querySelector('[data-block-id="db"]')).toHaveAttribute('data-shape', 'decision')
-    expect(screen.queryByRole('dialog', { name: 'Shape' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Shape and colour' })).toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'Shape of Database: Decision' }))
     await user.click(screen.getByRole('radio', { name: 'Process' }))
@@ -490,7 +490,19 @@ describe('TakeSix (editing)', () => {
     // Esc closes without a change
     await user.click(screen.getByRole('button', { name: 'Shape of Database: Process' }))
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('dialog', { name: 'Shape' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Shape and colour' })).toBeNull()
+  })
+
+  it('colours a block from the shape menu, neutral back included', async () => {
+    const { user, latest } = renderEditable()
+    await user.click(screen.getByRole('button', { name: 'Shape of Database: Process' }))
+    await user.click(screen.getByRole('radio', { name: 'Danger' }))
+    expect(latest.doc.blocks[2]!.tone).toBe('danger')
+    expect(document.querySelector('[data-block-id="db"]')).toHaveAttribute('data-tone', 'danger')
+
+    await user.click(screen.getByRole('button', { name: 'Shape of Database: Process' }))
+    await user.click(screen.getByRole('radio', { name: 'Neutral' }))
+    expect(latest.doc.blocks[2]).not.toHaveProperty('tone')
   })
 
   it('does not offer link editing outside edit mode', () => {

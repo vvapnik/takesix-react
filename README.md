@@ -160,6 +160,11 @@ theme with the `theme` prop, or override variables through `className`:
 }
 ```
 
+Block tones take their colours from `--ts-tone-accent`, `--ts-tone-success`,
+`--ts-tone-warning` and `--ts-tone-danger` (by default the theme's accent,
+success, warning and danger colours); the card's fill and border are mixed
+from them with `--ts-surface`.
+
 ### What is shown
 
 - **One level per screen**, with a breadcrumb below the top level. The header
@@ -188,6 +193,11 @@ theme with the `theme` prop, or override variables through `className`:
   middle half), `io` (parallelogram), `subprocess` (double sides),
   `loop-start` and `loop-end` (cut corners). Their text is centred. Arrows
   meet a diamond at its corners.
+- **Tone**: `tone` colours a block by meaning (`accent`, `success`,
+  `warning`, `danger`; `neutral` is the plain card) or with a colour of its
+  own (`"#7a5af8"`): a light fill and a border mixed from that colour with the
+  theme's surface, the same way in the light and the dark theme, flowchart
+  symbols included. The text keeps the theme's colours.
 - **Text**: a block opens either into blocks or into text (`details`, never
   both). Text opens like any level: the same zoom, the breadcrumb, the
   block's title and full description on top, and the text below in a column
@@ -208,8 +218,9 @@ theme with the `theme` prop, or override variables through `className`:
 In edit mode you can:
 
 - rename blocks and edit descriptions in place; pick a block's flowchart
-  symbol from their outlines with the button in its top right corner (arrow
-  keys move between them, Esc closes);
+  symbol from their outlines and its tone, or a colour of its own from the
+  system colour picker, with the button in its top right corner (arrow keys
+  move between the options, Esc closes);
 - add and delete blocks: "Add block" in the toolbar puts one in the first free
   place, a click on an empty cell of the grid puts it there; a level stops
   offering "add" at 6 blocks or when the grid is full;

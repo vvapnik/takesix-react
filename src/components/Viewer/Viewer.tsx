@@ -415,6 +415,8 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
                 x={shapeMenu.x}
                 y={shapeMenu.y}
                 onPick={shape => actions.setShape(shapeBlock.id, shape)}
+                tone={shapeBlock.tone}
+                onPickTone={tone => actions.setTone(shapeBlock.id, tone)}
                 onClose={closeShapes}
               />
             )}

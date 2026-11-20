@@ -124,6 +124,9 @@ export function TakeSix({
       setShape(id, shape) {
         commit(updateBlock(doc, id, { shape: shape === 'process' ? undefined : shape }))
       },
+      setTone(id, tone) {
+        commit(updateBlock(doc, id, { tone: tone === 'neutral' ? undefined : tone }))
+      },
       describe(id, description) {
         commit(updateBlock(doc, id, { description: description.trim() || undefined }))
       },

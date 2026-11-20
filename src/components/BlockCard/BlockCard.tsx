@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { formatArea, type Area, type Block } from '@takesix/core'
 import { SHAPE_NAMES, ShapeGlyph } from '../ShapeMenu/index.js'
 import { ArrowRightIcon, BlockIcon, CheckIcon, CrossIcon, LinkIcon, PlusIcon, TextIcon } from '../Icons/index.js'
+import { toneColor } from '../../utils/tone.js'
 import styles from './BlockCard.module.css'
 
 export interface CardRect {
@@ -97,6 +98,8 @@ export function BlockCard({
   const shape = block.shape && block.shape !== 'process' ? block.shape : undefined
   // Outlines CSS borders cannot draw: a layer clipped to the symbol
   const outlined = shape === 'decision' || shape === 'io' || shape === 'loop-start' || shape === 'loop-end'
+  // Colour by meaning or of the block's own; neutral and unknown values draw nothing
+  const tone = toneColor(block.tone)
 
   // The card is draggable only while the handle is held, so text can still be
   // selected and edited by dragging inside the card.
@@ -160,13 +163,14 @@ export function BlockCard({
       data-block-id={block.id}
       data-at={formatArea(area)}
       data-shape={shape}
+      data-tone={tone ? block.tone : undefined}
       // Phone width hides the description of blocks half the grid wide or narrower
       data-compact={area.width <= 3 || undefined}
       // One column wide: the icon alone, the title in the tooltip
       data-icon-only={(area.width === 1 && !!block.icon && !editing && !shape) || undefined}
       title={area.width === 1 && block.icon && !editing ? block.title : undefined}
       data-drop={isDropTarget ? 'inside' : undefined}
-      style={areaStyle(area)}
+      style={tone ? { ...areaStyle(area), '--ts-tone': tone } as React.CSSProperties : areaStyle(area)}
       onClick={handleCardClick}
       draggable={editing && armed}
       onDragStart={e => {
@@ -283,7 +287,7 @@ export function BlockCard({
           onClick={e => { e.stopPropagation(); onOpenShapes(block.id, e.currentTarget.getBoundingClientRect()) }}
           aria-label={`Shape of ${block.title}: ${SHAPE_NAMES[block.shape ?? 'process']}`}
           aria-haspopup="dialog"
-          title={`Shape: ${SHAPE_NAMES[block.shape ?? 'process']}`}
+          title={`Shape and colour: ${SHAPE_NAMES[block.shape ?? 'process']}`}
         >
           <ShapeGlyph shape={block.shape ?? 'process'} />
         </button>

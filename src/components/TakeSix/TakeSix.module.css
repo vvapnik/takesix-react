@@ -37,7 +37,9 @@
   color: var(--ts-text);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   position: relative;
-  overflow: hidden;
+  /* A screen too short for the level scrolls as a whole (see .viewer) */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .takeSix[data-theme='dark'] {

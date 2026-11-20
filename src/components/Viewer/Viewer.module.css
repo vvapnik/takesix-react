@@ -5,7 +5,9 @@
   flex-direction: column;
   /* between the breadcrumb and the slide; kept small to save height */
   gap: 6px;
-  height: 100%;
+  /* The screen, plus what the level's grid needs beyond it (--ts-grow, see
+     useFitZoom): then the whole TakeSix scrolls */
+  height: calc(100% + var(--ts-grow, 0px));
 }
 
 /* Breadcrumb */
@@ -172,7 +174,9 @@
 }
 
 /* Grid container. Also the container for phone-width rules (see .grid and
-   BlockCard's compact cards). */
+   BlockCard's compact cards). A grid taller than the screen (its least
+   height, or a phone's rows) makes the viewer taller (see .viewer): the
+   level does not scroll inside, the whole TakeSix does. */
 .gridArea {
   /* size: the grid below fits itself into both the width and the height */
   container: ts-level / size;
@@ -328,8 +332,17 @@
   --ts-grid-margin: clamp(24px, 4cqi, 56px);
   /* With fewer rows shown (see --ts-row-share) the bounds scale with them */
   --ts-row-share: 1;
-  width: min(calc(100cqw - 2 * var(--ts-grid-margin)), calc(200cqh * var(--ts-row-share)));
+  /* Never shorter than this: a row keeps room for an icon, a title and the
+     footer. A shorter screen scrolls the level (see .gridArea), and the grid
+     stays at least as wide as it is tall. --ts-rows comes from the Viewer. */
+  --ts-row-min: 64px;
+  --ts-grid-min-height: calc(var(--ts-rows, 6) * var(--ts-row-min) + (var(--ts-rows, 6) - 1) * 24px);
+  width: min(
+    calc(100cqw - 2 * var(--ts-grid-margin)),
+    max(calc(200cqh * var(--ts-row-share)), var(--ts-grid-min-height))
+  );
   height: min(calc((100cqw - 2 * var(--ts-grid-margin)) / var(--ts-row-share)), 100cqh);
+  min-height: var(--ts-grid-min-height);
   align-self: center;
   margin-block: auto;
   /* room beside the outer columns for an arrow going around blocks (the way
@@ -354,6 +367,7 @@
   .grid:not(.gridEditing) {
     --ts-empty-col: 0px;
     height: auto;
+    min-height: 0;
     margin-block: 0 auto;
     grid-template-rows: var(--ts-rows-compact);
   }

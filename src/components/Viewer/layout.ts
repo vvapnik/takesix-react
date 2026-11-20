@@ -58,6 +58,8 @@ export function gridStyle(areas: Map<string, Area>, editing: boolean): React.CSS
       : Array.from({ length: GRID_SIZE }, (_, c) =>
           covered(a => a.col <= c && c < a.col + a.width) ? 'minmax(0, 1fr)' : 'var(--ts-empty-col)').join(' '),
     '--ts-rows-full': `repeat(${fullRows}, minmax(0, 1fr))`,
+    // Rows shown, for the grid's least height (see .grid)
+    '--ts-rows': fullRows,
     // How many times the six rows are taller than the rows shown: the grid
     // keeps the proportions of its cells, not of the whole 6×6 grid
     '--ts-row-share': GRID_SIZE / fullRows,

@@ -18,6 +18,7 @@ import { clampDescription } from '../layout.js'
  * `ticks` are the other things that change sizes (resize, animation end, a new level).
  */
 export function useFitZoom(
+  viewerRef: RefObject<HTMLDivElement | null>,
   gridRef: RefObject<HTMLDivElement | null>,
   gridAreaRef: RefObject<HTMLDivElement | null>,
   cardEls: RefObject<Map<string, HTMLDivElement>>,
@@ -33,7 +34,15 @@ export function useFitZoom(
   useLayoutEffect(() => {
     const grid = gridRef.current
     const area = gridAreaRef.current
-    if (!grid || !area) return
+    const viewer = viewerRef.current
+    if (!grid || !area || !viewer) return
+    // Measured at the height the screen gives the level, then grown to the grid
+    viewer.style.removeProperty('--ts-grow')
+    try { fit(grid, area) } finally { growToGrid(viewer, area) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, editing, zoom, typographyTick, ...ticks])
+
+  function fit(grid: HTMLDivElement, area: HTMLDivElement) {
     // The area, not the grid: the grid's own sizes change with its zoom
     const key = `${area.clientWidth}x${area.clientHeight}|${blocks.map(b => b.id).join()}|${typographyTick}`
     if (key !== fitFor.current) {
@@ -51,6 +60,19 @@ export function useFitZoom(
     for (const el of texts) el.removeAttribute('data-clipped')
     for (const el of texts) if (overflowOf(el) > 1.01) clampDescription(el)
     if (next !== zoom) setZoom(next)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, editing, zoom, typographyTick, ...ticks])
+  }
+}
+
+/**
+ * A grid taller than its area (the grid's least height on a short screen, or
+ * a phone's rows as tall as their content) makes the whole viewer that much
+ * taller (see .viewer), so the whole TakeSix scrolls instead of the level, and
+ * an embedding frame sees the height it needs. The area is a size container,
+ * so its content alone does not stretch it.
+ */
+function growToGrid(viewer: HTMLElement, area: HTMLElement) {
+  if (area.scrollHeight - area.clientHeight <= 1) return
+  // scrollHeight leaves out the padding below a flex column's content
+  const cut = area.scrollHeight + (parseFloat(getComputedStyle(area).paddingBottom) || 0) - area.clientHeight
+  viewer.style.setProperty('--ts-grow', `${Math.ceil(cut)}px`)
 }

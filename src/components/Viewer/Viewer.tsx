@@ -58,6 +58,7 @@ interface PathEntry {
 }
 
 export function Viewer({ document: doc, editing, actions, typographyTick, view, onNavigate, onCopyLink }: Props) {
+  const viewerRef = useRef<HTMLDivElement>(null)
   const slideRef = useRef<HTMLDivElement>(null)
   const gridAreaRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -132,7 +133,7 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
   const { zoomIn, zoomOut, isAnimating, settleTick } = useZoomAnimation(slideRef, cardEls, layoutKey)
   const arrowPaths = useArrowPaths(slideRef, gridAreaRef, cardEls, blocks, links,
     [layoutKey, editing, sizeTick, settleTick, zoom, typographyTick])
-  useFitZoom(gridRef, gridAreaRef, cardEls, blocks, editing, typographyTick, zoom, setZoom,
+  useFitZoom(viewerRef, gridRef, gridAreaRef, cardEls, blocks, editing, typographyTick, zoom, setZoom,
     [sizeTick, settleTick, layoutKey])
   const arrows = useMemo(() => toArrows(arrowPaths, links), [arrowPaths, links])
 
@@ -321,7 +322,7 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
   const drop = drag.drop
 
   return (
-    <div className={styles.viewer}>
+    <div ref={viewerRef} className={styles.viewer}>
       {isNested && (
         <Breadcrumb labels={crumbs} dropCrumb={drag.dropCrumb} onGoTo={i => goBack(i)} onUp={goUp} crumbDrop={drag.crumbDrop} />
       )}

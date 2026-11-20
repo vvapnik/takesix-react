@@ -1,0 +1,188 @@
+import type { TakeSixDocument } from '@takesix/core'
+
+// The demo presents TakeSix itself, as a TakeSix document. It follows the
+// rules it shows: the grid is used, not filled, and linked blocks keep an
+// empty row or column between them.
+export const sample: TakeSixDocument = {
+  takesix: '1.0',
+  title: 'TakeSix',
+  description: 'AI agents answer with readable diagrams instead of walls of text. Click any block to look inside.',
+  blocks: [
+    {
+      id: 'agents', at: 'A1:B2',
+      icon: '✦',
+      title: 'Answers as diagrams',
+      description: 'Instead of a long wall of text, an AI agent answers with a diagram you read at a glance',
+      children: [
+        { id: 'flow-ask', at: 'A1:A2', icon: '?', title: 'Ask', description: 'Explain this codebase, this document, this plan' },
+        { id: 'flow-write', at: 'C1:C2', icon: '✦', title: 'The agent writes', description: 'Six blocks per level, placed on a grid' },
+        { id: 'flow-check', at: 'E1:E2', icon: '✓', title: 'Checked', description: 'Invalid answers are fixed before you see them' },
+        { id: 'flow-read', at: 'E4:E5', icon: '◉', title: 'Read, then zoom', description: 'The gist on one screen, the depth one click away' },
+        {
+          id: 'uses', at: 'A4:C5',
+          icon: '◎',
+          title: 'What agents explain',
+          description: 'Architecture, data models, plans, presentations',
+          children: [
+            { id: 'use-arch', at: 'A1:B2', icon: '⬡', title: 'Architecture', description: 'Systems, services and how they talk' },
+            { id: 'use-data', at: 'E1:F2', icon: '◫', title: 'Data models', description: 'Entities grouped by domain' },
+            { id: 'use-plans', at: 'A4:B5', icon: '➜', title: 'Plans', description: 'Stages and tasks, in the order they come' },
+            { id: 'use-slides', at: 'E4:F5', icon: '▭', title: 'Presentations', description: 'Each level is a slide you can zoom into' },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'rule', at: 'D1:D2',
+      icon: '⑥',
+      title: 'The rule of six',
+      description: 'Why a screen holds six blocks at most',
+      children: [
+        {
+          id: 'rule-six', at: 'A1:B2',
+          icon: '▦',
+          title: 'Six at most',
+          description: 'A level is full at six blocks: group some to make room',
+        },
+        {
+          id: 'rule-zoom', at: 'E1:F2',
+          icon: '⤢',
+          title: 'Zoom in',
+          description: 'Click a block to open what is inside; the breadcrumb leads back',
+        },
+        {
+          id: 'rule-links', at: 'A4:B5',
+          icon: '⇄',
+          title: 'Links on every level',
+          description: 'A link between nested blocks shows up between their parents',
+          details: [
+            'Links may join blocks on **any** levels. On each screen the ends are',
+            'lifted to the blocks you can see:',
+            '',
+            '- several links between the same two blocks merge into one arrow;',
+            '- a merged arrow is dashed and says how many links it stands for;',
+            '- open a block to see the links inside it.',
+          ].join('\n'),
+        },
+        {
+          id: 'rule-details', at: 'E4:F5',
+          icon: '≡',
+          title: 'Text on demand',
+          description: 'A block opens into more blocks or into text, like this one',
+          details: [
+            'Cards stay short: an icon, a title, one line of description.',
+            '',
+            'A block opens either into more blocks or into text, never both.',
+            'Text opens like any level: the same zoom, the same header, and',
+            'the **details** below it in a column you can read. It supports',
+            '*emphasis*, `code`, lists and [links](https://github.com/vvapnik/takesix-react).',
+          ].join('\n'),
+        },
+      ],
+    },
+    {
+      id: 'roadmap', at: 'F1:F2',
+      icon: '➜',
+      title: 'Roadmap',
+      description: 'From an open format to the cloud',
+      children: [
+        { id: 'road-agents', at: 'A1:B2', icon: '①', title: 'Agent skill and MCP server', description: 'Any agent answers with TakeSix, rendered to one HTML file' },
+        { id: 'road-release', at: 'E1:F2', icon: '②', title: 'Release 1.0', description: 'Format, core, React and the agent tools on npm' },
+        { id: 'road-integrations', at: 'E4:F5', icon: '③', title: 'Integrations', description: 'Confluence, Notion, GitHub, VS Code' },
+        { id: 'road-cloud', at: 'A4:B5', icon: '④', title: 'Cloud and collaboration', description: 'Hosted documents, sharing, editing together' },
+      ],
+    },
+    {
+      id: 'format', at: 'A4:A5',
+      icon: '⌗',
+      title: 'The format',
+      description: 'Plain JSON: blocks on a grid, links, text',
+      children: [
+        { id: 'format-blocks', at: 'A1:B2', icon: '▢', title: 'Blocks', description: 'id, at, title, description, icon, children' },
+        { id: 'format-links', at: 'E1:F2', icon: '⇄', title: 'Links', description: 'from, to, label, direction' },
+        {
+          id: 'format-grid', at: 'A4:C5',
+          icon: '▦',
+          title: 'The grid',
+          description: 'Each level is a 6×6 grid; a block covers a range like "A1:C2". Open to see',
+          children: [
+            { id: 'grid-tall', at: 'A1:B3', title: 'A1:B3', description: 'Tall: two columns, three rows' },
+            { id: 'grid-wide', at: 'D1:F1', title: 'D1:F1', description: 'Wide: three columns of one row' },
+            { id: 'grid-small', at: 'D3', title: 'D3', description: 'One cell' },
+            { id: 'grid-gap', at: 'F3:F5', title: 'F3:F5', description: 'E3 next to it stays empty' },
+            { id: 'grid-row', at: 'A5:C6', title: 'A5:C6', description: 'Blocks never overlap; empty cells are space' },
+          ],
+        },
+        {
+          id: 'format-schema', at: 'E4:F5',
+          icon: '✓',
+          title: 'Schema and validation',
+          description: 'JSON Schema for editors and agents, clear errors with paths',
+          details: [
+            'Every document carries its version:',
+            '',
+            '```',
+            '{ "takesix": "1.0", "title": "…", "blocks": [ … ] }',
+            '```',
+            '',
+            'Errors point at the place: `/blocks/1/children: 7 blocks on one level,',
+            'at most 6 allowed`.',
+          ].join('\n'),
+        },
+      ],
+    },
+    {
+      id: 'core', at: 'C4:C5',
+      icon: '⬢',
+      title: '@takesix/core',
+      description: 'The format in code: no UI, no dependencies',
+      children: [
+        { id: 'core-parse', at: 'A1:B2', icon: '⇣', title: 'Parse and validate', description: 'Read and check documents' },
+        { id: 'core-edit', at: 'E1:F2', icon: '✎', title: 'Edit', description: 'Immutable helpers: add, move, group, link' },
+        { id: 'core-grid', at: 'A4:B5', icon: '▦', title: 'Grid', description: 'Cells, ranges, free places, reading order' },
+        { id: 'core-layout', at: 'E4:F5', icon: '⚠', title: 'Layout hints', description: 'Arrows with a block in their way, arrows that cross' },
+        { id: 'core-visible', at: 'C6:D6', icon: '⇄', title: 'Visible links', description: 'Which arrows each screen draws' },
+      ],
+    },
+    {
+      id: 'react', at: 'E4:F5',
+      icon: '⚛',
+      title: '@takesix/react',
+      description: 'Viewer and editor for the web',
+      children: [
+        { id: 'react-viewer', at: 'A1:B2', icon: '◉', title: 'Viewer', description: 'Zoom animation, arrows, text to read' },
+        {
+          id: 'react-editor', at: 'E1:F2',
+          icon: '✎',
+          title: 'Editor',
+          description: 'Everything is edited in place',
+          children: [
+            { id: 'edit-text', at: 'A1:B1', title: 'Rename in place', description: 'Titles and descriptions are editable text' },
+            { id: 'edit-move', at: 'E1:F1', title: 'Drag to move', description: 'Drop on a cell or into a block' },
+            { id: 'edit-size', at: 'A3:B3', title: 'Resize', description: 'Drag the bottom-right corner' },
+            { id: 'edit-links', at: 'E3:F3', title: 'Link across levels', description: 'Start on a block, open others, pick the target' },
+            { id: 'edit-group', at: 'A5:B5', title: 'Group blocks', description: 'Makes room on a full level' },
+            { id: 'edit-hints', at: 'E5:F5', title: 'Layout hints', description: 'Arrows that read badly turn amber' },
+          ],
+        },
+        { id: 'react-themes', at: 'A4:B5', icon: '◐', title: 'Themes', description: 'Light, dark or the system setting' },
+        { id: 'react-embed', at: 'E4:F5', icon: '▣', title: 'Embeddable', description: 'One component that fills its container' },
+      ],
+    },
+  ],
+  links: [
+    // No labels between side-by-side blocks: the gap fits only a short word
+    { id: 'agents-format', from: 'agents', to: 'format' },
+    { id: 'format-core', from: 'format', to: 'core' },
+    { id: 'core-react', from: 'core', to: 'react' },
+    { id: 'parse-edit', from: 'core-parse', to: 'core-edit' },
+    { id: 'grid-edit', from: 'core-grid', to: 'core-edit' },
+    { id: 'grid-layout', from: 'core-grid', to: 'core-layout' },
+    { id: 'flow-1', from: 'flow-ask', to: 'flow-write' },
+    { id: 'flow-2', from: 'flow-write', to: 'flow-check' },
+    { id: 'flow-3', from: 'flow-check', to: 'flow-read' },
+    { id: 'road-1-2', from: 'road-agents', to: 'road-release' },
+    { id: 'road-2-3', from: 'road-release', to: 'road-integrations' },
+    { id: 'road-3-4', from: 'road-integrations', to: 'road-cloud' },
+  ],
+}

@@ -1,0 +1,693 @@
+.card {
+  background: var(--ts-surface);
+  border: 1px solid var(--ts-border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s, border-color 0.2s;
+  position: relative;
+}
+
+.deleteBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--ts-icon);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+  z-index: 2;
+}
+
+.deleteBtn:hover {
+  background: var(--ts-danger-soft);
+  color: var(--ts-danger);
+}
+
+/* Bottom-right corner in edit mode: drag to resize */
+.resizeHandle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  z-index: 3;
+  background: linear-gradient(135deg, transparent 55%, var(--ts-border-strong) 55%, var(--ts-border-strong) 62%, transparent 62%, transparent 72%, var(--ts-border-strong) 72%, var(--ts-border-strong) 79%, transparent 79%);
+}
+
+.resizeHandle:hover,
+.cardResizing .resizeHandle {
+  background: linear-gradient(135deg, transparent 55%, var(--ts-accent) 55%, var(--ts-accent) 62%, transparent 62%, transparent 72%, var(--ts-accent) 72%, var(--ts-accent) 79%, transparent 79%);
+}
+
+.cardResizing {
+  border-color: var(--ts-accent);
+  z-index: 2;
+}
+
+/* The new size would cover another block or leave the grid */
+.cardResizingBad {
+  border-color: var(--ts-danger);
+  z-index: 2;
+}
+
+.connectBtn {
+  position: absolute;
+  top: 8px;
+  right: 34px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--ts-icon);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+  z-index: 2;
+}
+
+.connectBtn:hover {
+  background: var(--ts-accent-soft);
+  color: var(--ts-accent);
+}
+
+.connectBtnActive {
+  background: var(--ts-accent);
+  color: #ffffff;
+}
+
+.connectBtnActive:hover {
+  background: var(--ts-accent-hover);
+  color: #ffffff;
+}
+
+/* Connection visual states */
+.cardConnectingSource {
+  border-color: var(--ts-accent) !important;
+  box-shadow: 0 0 0 2px rgba(61, 106, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+.cardConnectable {
+  border-color: var(--ts-border-strong);
+}
+
+.cardConnectable:hover {
+  border-color: var(--ts-accent) !important;
+  box-shadow: 0 0 0 2px rgba(61, 106, 255, 0.15) !important;
+}
+
+.cardConnected {
+  border-color: var(--ts-accent) !important;
+  box-shadow: 0 0 0 2px rgba(61, 106, 255, 0.3) !important;
+}
+
+/* Full-card overlay for click-to-connect */
+.connectOverlay {
+  border: none;
+  background: transparent;
+  padding: 0;
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  z-index: 5;
+  border-radius: 10px;
+}
+
+/* While linking: a block that cannot be the target (contains the source or is inside it) */
+.cardUnlinkable {
+  opacity: 0.45;
+}
+
+.selectOverlay {
+  cursor: pointer;
+}
+
+/* Round check on the drag handle strip, clear of the block's own icon */
+.selectMark {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ts-border-strong);
+  background: var(--ts-surface);
+  /* the check is shown on the accent background only */
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.cardSelected {
+  border-color: var(--ts-accent) !important;
+  box-shadow: 0 0 0 2px rgba(61, 106, 255, 0.3) !important;
+}
+
+.cardSelected .selectMark {
+  border-color: var(--ts-accent);
+  background: var(--ts-accent);
+}
+
+.connectOverlayConnected {
+  cursor: pointer;
+}
+
+/* Edit mode: room for the drag handle on the left */
+.cardEditing {
+  padding-left: 18px;
+}
+
+/* ...and for the shape, connect and delete buttons in the top right corner */
+.cardEditing .header {
+  padding-right: 90px;
+}
+
+/* Shape picker button: the outline of the block's symbol */
+.shapeBtn {
+  all: unset;
+  position: absolute;
+  top: 8px;
+  right: 60px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--ts-icon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  z-index: 2;
+}
+
+.shapeBtn:hover {
+  background: var(--ts-accent-soft);
+  color: var(--ts-accent);
+}
+
+.shapeBtn:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: 1px;
+}
+
+.addInside {
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* "blocks" or "text": what the empty block will open into */
+.addChoice {
+  all: unset;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--ts-border-strong);
+}
+
+.addChoice:hover {
+  color: var(--ts-accent);
+  text-decoration-color: currentColor;
+}
+
+.addChoice:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* "Read": the block opens into text */
+.read {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Tall strip of dots along the left edge: grab it to drag the block */
+.dragHandle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 18px;
+  cursor: grab;
+  border-right: 1px solid var(--ts-divider);
+  background-color: var(--ts-sunken);
+  background-image: radial-gradient(circle, var(--ts-border-strong) 1.2px, transparent 1.6px);
+  background-size: 6px 6px;
+  background-position: 3px 3px;
+  border-radius: 10px 0 0 10px;
+  z-index: 2;
+  transition: background-color 0.15s;
+}
+
+.dragHandle:hover {
+  background-color: var(--ts-accent-soft);
+  background-image: radial-gradient(circle, var(--ts-accent) 1.2px, transparent 1.6px);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.dragHandle:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: -2px;
+}
+
+.cardDragged {
+  opacity: 0.4;
+}
+
+/* Drop indicator: into the card, it becomes the block's new parent */
+.card[data-drop='inside'] { box-shadow: 0 0 0 2px var(--ts-accent); background: var(--ts-accent-soft); }
+
+.cardZoomable {
+  cursor: zoom-in;
+}
+
+.card:hover {
+  border-color: var(--ts-border-strong);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Compact, and the same in view and edit mode: a card of one row fits a row
+   of the grid on a laptop screen, and the text does not move between modes */
+.header {
+  /* tight vertically: a one-row card holds title, a line of description and
+     its footer even on a nested level of a laptop screen */
+  padding: 8px 16px 3px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* Viewing: a description that does not fit the card ends with "…" after the
+   lines that fit (--ts-lines, set by the Viewer) rather than shrinking the
+   whole level; the block's own level shows all of it */
+.card:not(.cardEditing) .header {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.card:not(.cardEditing) .header[data-clipped] .description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--ts-lines, 1);
+  overflow: hidden;
+}
+
+.card:not(.cardEditing) .header[data-clipped='all'] .description {
+  display: none;
+}
+
+.icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ts-text);
+  letter-spacing: 0.01em;
+}
+
+.description {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ts-text-muted);
+  line-height: 1.4;
+}
+
+/* Full width: a row, like a list item — text left, "N more inside" right */
+.cardWide {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.cardWide .header {
+  flex: 1;
+  padding: 10px 20px;
+  border-bottom: none;
+}
+
+.cardWide .footer {
+  padding: 0 20px 10px;
+  align-self: flex-end;
+}
+
+
+
+
+/* Room for the edit-mode underline in view mode too, so the text does not
+   move when editing starts */
+.title,
+.description {
+  border-bottom: 1.5px solid transparent;
+  padding-bottom: 1px;
+}
+
+.editable {
+  border-bottom: 1.5px dashed var(--ts-border-strong);
+  border-radius: 2px;
+  cursor: text;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  padding-bottom: 1px;
+}
+
+.editable:empty::before {
+  content: attr(data-placeholder);
+  color: var(--ts-icon);
+}
+
+.editable:focus {
+  border-bottom-color: var(--ts-accent);
+  background: rgba(61, 106, 255, 0.05);
+}
+
+/* Bottom line of the card, however tall it is: what the block opens
+   into ("N more inside", "Read") */
+.footer {
+  margin-top: auto;
+  padding: 0 16px 7px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.footer:empty {
+  display: none;
+}
+
+/* "N more inside": the only hint of what the block holds */
+.inside {
+  all: unset;
+  cursor: inherit;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ts-text-faint);
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.cardZoomable:hover .inside {
+  color: var(--ts-accent);
+}
+
+/* Phone width: blocks half the grid wide or narrower show icon, title and
+   "N more inside", no description; the icon goes above the title to leave
+   it room */
+@container ts-level (max-width: 560px) {
+  .card[data-compact]:not(.cardEditing) .description { display: none; }
+  .card[data-compact] .header {
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 12px 8px;
+  }
+  .card[data-compact] .title {
+    font-size: 0.9rem;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .card[data-compact] .footer {
+    padding: 0 12px 12px;
+  }
+  .card[data-compact] .inside {
+    white-space: normal;
+  }
+}
+
+.inside:focus-visible {
+  outline: 2px solid var(--ts-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+
+/* ── Flowchart symbols (ISO 5807), within the block's cells ───────────── */
+
+/* Flowchart symbols hold their text in the middle, like the standard draws them */
+.card[data-shape] {
+  justify-content: center;
+  text-align: center;
+}
+
+.card[data-shape] .header {
+  justify-content: center;
+  /* also when the phone layout stacks the icon above the title */
+  align-items: center;
+}
+
+.card[data-shape] .headerText {
+  align-items: center;
+}
+
+.card[data-shape] .footer {
+  margin-top: 0;
+  justify-content: center;
+}
+
+/* Terminator: start or end, a card with round ends */
+.card[data-shape='terminator'] {
+  border-radius: 999px;
+}
+
+/* Room for the round ends, less on narrow cards so words are not broken */
+.card[data-shape='terminator'] .header,
+.card[data-shape='terminator'] .footer {
+  padding-left: clamp(8px, 12%, 28px);
+  padding-right: clamp(8px, 12%, 28px);
+}
+
+/* Subprocess (predefined process): a second line inside each side */
+.card[data-shape='subprocess']::before,
+.card[data-shape='subprocess']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ts-border-strong);
+  pointer-events: none;
+}
+
+.card[data-shape='subprocess']::before { left: 8px; }
+.card[data-shape='subprocess']::after { right: 8px; }
+
+.card[data-shape='subprocess'] .header,
+.card[data-shape='subprocess'] .footer {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.card[data-shape='subprocess'].cardEditing::before { left: 26px; }
+
+/* Symbols a border cannot draw: the card itself is invisible and the outline
+   layer, clipped to the symbol, draws the line (::before) and the fill
+   (::after, 1px inside). The drop shadow sits on the unclipped layer. */
+.card:is([data-shape='decision'], [data-shape='io'], [data-shape='loop-start'], [data-shape='loop-end']) {
+  --ts-shape-line: var(--ts-border);
+  --ts-shape-fill: var(--ts-surface);
+  --ts-io-skew: 14px;
+  --ts-loop-cut: 12px;
+  background: transparent;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  overflow: visible;
+}
+
+.outline {
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+  transition: filter 0.2s;
+}
+
+.outline::before,
+.outline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: var(--ts-shape);
+  background: var(--ts-shape-line);
+  transition: background 0.2s;
+}
+
+.outline::after {
+  inset: 1px;
+  background: var(--ts-shape-fill);
+}
+
+.card:is([data-shape='decision'], [data-shape='io'], [data-shape='loop-start'], [data-shape='loop-end']) > :is(.header, .footer) {
+  position: relative;
+}
+
+.card[data-shape='decision'] { --ts-shape: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.card[data-shape='io'] {
+  --ts-shape: polygon(var(--ts-io-skew) 0, 100% 0, calc(100% - var(--ts-io-skew)) 100%, 0 100%);
+}
+.card[data-shape='loop-start'] {
+  --ts-shape: polygon(var(--ts-loop-cut) 0, calc(100% - var(--ts-loop-cut)) 0, 100% var(--ts-loop-cut),
+    100% 100%, 0 100%, 0 var(--ts-loop-cut));
+}
+.card[data-shape='loop-end'] {
+  --ts-shape: polygon(0 0, 100% 0, 100% calc(100% - var(--ts-loop-cut)), calc(100% - var(--ts-loop-cut)) 100%,
+    var(--ts-loop-cut) 100%, 0 calc(100% - var(--ts-loop-cut)));
+}
+
+/* States that colour a card's border colour the symbol's line instead */
+.card[data-shape]:hover { --ts-shape-line: var(--ts-border-strong); }
+.card[data-shape]:hover .outline { filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1)); }
+.card[data-shape]:is(.cardSelected, .cardConnectingSource, .cardConnected, .cardResizing),
+.card[data-shape].cardConnectable:hover { --ts-shape-line: var(--ts-accent); }
+.card[data-shape].cardResizingBad { --ts-shape-line: var(--ts-danger); }
+.card[data-shape][data-drop='inside'] { background: transparent; --ts-shape-fill: var(--ts-accent-soft); }
+
+/* Decision: the text sits in the middle of the diamond, which leaves it about
+   half the card's width; the description ends in "…" sooner */
+.card[data-shape='decision'] {
+  min-height: 72px;
+  padding: 14px 22%;
+}
+
+.card[data-shape='decision'] .header {
+  padding: 0;
+  gap: 6px;
+}
+
+.card[data-shape='decision'] .footer {
+  margin-top: 2px;
+  padding: 0;
+}
+
+.card[data-shape='decision'].cardEditing .header {
+  padding-right: 0;
+}
+
+/* Data in or out: text clear of the slanted sides */
+.card[data-shape='io'] .header,
+.card[data-shape='io'] .footer {
+  padding-left: calc(16px + var(--ts-io-skew));
+  padding-right: calc(16px + var(--ts-io-skew));
+}
+
+/* Loop limits: a little more room by the cut corners */
+.card[data-shape='loop-start'] .header { padding-top: 16px; }
+.card[data-shape='loop-end'] .footer { padding-bottom: 14px; }
+
+/* An SVG icon: the size of an emoji icon */
+img.icon { width: 1em; height: 1em; }
+
+/* One column wide: the icon fills the card, no text (title in the tooltip,
+   still read by screen readers) */
+.card[data-icon-only] {
+  justify-content: center;
+  /* the icon scales with the card's width; the card is at least a square,
+     also where rows take their content's height (phone width) */
+  container-type: inline-size;
+  aspect-ratio: 1;
+}
+.card[data-icon-only] .header {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+}
+.card[data-icon-only] .icon {
+  font-size: clamp(1.25rem, 45cqi, 4rem);
+  margin: 0;
+}
+.card[data-icon-only] .headerText,
+.card[data-icon-only] .footer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* Link to the block: viewing only, shown on hover or focus like the edit controls */
+.linkBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ts-surface);
+  color: var(--ts-icon);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  z-index: 2;
+}
+
+.card:hover .linkBtn,
+.linkBtn:focus-visible,
+.linkBtnShown {
+  opacity: 1;
+}
+
+.linkBtn:hover {
+  background: var(--ts-accent-soft);
+  color: var(--ts-accent);
+}
+
+@media (hover: none) {
+  .linkBtn { display: none; }
+}
+
+/* The block a link points at: an accent ring that does not depend on the
+   block's colour, and one short pulse to catch the eye */
+.cardHighlighted,
+.cardHighlighted:hover {
+  border-color: var(--ts-accent);
+  box-shadow: 0 0 0 2px var(--ts-accent), 0 4px 16px rgba(0, 0, 0, 0.1);
+  animation: ts-highlight 1.2s ease-out 0.2s 1;
+}
+
+@keyframes ts-highlight {
+  0% { box-shadow: 0 0 0 2px var(--ts-accent), 0 0 0 2px var(--ts-accent-soft); }
+  40% { box-shadow: 0 0 0 2px var(--ts-accent), 0 0 0 12px var(--ts-accent-soft); }
+  100% { box-shadow: 0 0 0 2px var(--ts-accent), 0 4px 16px rgba(0, 0, 0, 0.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardHighlighted { animation: none; }
+}

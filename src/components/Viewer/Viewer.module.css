@@ -1,0 +1,514 @@
+.viewer {
+  /* holds the copy of the screen that shrinks into its card on the way up */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* between the breadcrumb and the slide; kept small to save height */
+  gap: 6px;
+  height: 100%;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  cursor: zoom-out;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  position: relative;
+  z-index: 2;
+}
+
+.crumbItem {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.crumbSep {
+  color: var(--ts-icon);
+  padding: 0 6px;
+  font-size: 0.8rem;
+}
+
+.crumb {
+  all: unset;
+  cursor: pointer;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--ts-text-faint);
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.crumb:hover:not(:disabled) {
+  color: var(--ts-accent);
+  background: var(--ts-accent-soft);
+}
+
+.crumb:disabled { cursor: default; }
+.crumbActive { color: var(--ts-text); }
+
+/* A dragged block would move up to this level */
+.crumbDrop {
+  color: var(--ts-accent);
+  background: var(--ts-accent-soft);
+  box-shadow: 0 0 0 1.5px var(--ts-accent);
+}
+
+/* Full-screen backdrop — click outside the card to zoom out. It reaches over
+   the TakeSix padding around the viewer, so the whole strip beside the card
+   zooms out too. */
+.backdrop {
+  position: absolute;
+  inset: calc(-1 * var(--ts-pad-top, 0px)) calc(-1 * var(--ts-pad-x, 0px)) calc(-1 * var(--ts-pad-bottom, 0px));
+  cursor: zoom-out;
+  z-index: 1;
+}
+
+/* Slide — the main content area. Stays mounted; FLIP transforms this element. */
+.slide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  will-change: transform;
+  position: relative;
+  z-index: 2;
+}
+
+/* When nested: looks exactly like an enlarged BlockCard */
+.slideCard {
+  background: var(--ts-surface);
+  border: 1px solid var(--ts-border);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* Header: the document on the top level, the opened block below it.
+   When nested, identical sizing to BlockCard .header */
+.slideHeader {
+  padding: 20px 24px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.headerActions {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Top level: no card around it, so no inner padding */
+.slideHeaderTop {
+  padding: 0 0 20px;
+}
+
+.slideIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.slideHeaderText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.slideTitle {
+  margin: 0 0 5px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ts-text);
+  letter-spacing: 0.01em;
+}
+
+.slideDescription {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ts-text-muted);
+  line-height: 1.4;
+}
+
+/* Room for the edit-mode underline in view mode too, so the text does not
+   move when editing starts */
+.slideTitle,
+.slideDescription {
+  border-bottom: 1.5px solid transparent;
+  padding-bottom: 1px;
+}
+
+/* Edit mode: title and description of the header, edited in place
+   (same look as on the cards) */
+.editable {
+  border-bottom: 1.5px dashed var(--ts-border-strong);
+  border-radius: 2px;
+  cursor: text;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  padding-bottom: 1px;
+}
+
+.editable:empty::before {
+  content: attr(data-placeholder);
+  color: var(--ts-icon);
+}
+
+.editable:focus {
+  border-bottom-color: var(--ts-accent);
+  background: rgba(61, 106, 255, 0.05);
+}
+
+/* Grid container. Also the container for phone-width rules (see .grid and
+   BlockCard's compact cards). */
+.gridArea {
+  /* size: the grid below fits itself into both the width and the height */
+  container: ts-level / size;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+/* SVG arrow overlay */
+.arrowSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 3;
+}
+
+/* Arrows */
+.arrow {
+  fill: none;
+  stroke: var(--ts-accent);
+  stroke-width: 3;
+  stroke-opacity: 0.8;
+  stroke-linejoin: round;
+}
+
+.arrowSvgEditing .arrowHit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.arrowSvgEditing .arrowHit:hover + .arrow {
+  stroke-opacity: 1;
+  stroke-width: 3;
+}
+
+.arrowLabelsEditing .arrowLabel {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.arrowLabel.arrowLabelOpen {
+  font-weight: 700;
+  border-color: var(--ts-accent);
+}
+
+/* Link styles: a dashed or dotted line */
+.dashed {
+  stroke-dasharray: 8 6;
+}
+
+.dotted {
+  stroke-dasharray: 0 7;
+  stroke-linecap: round;
+  stroke-width: 3.5;
+}
+
+.arrowHead {
+  fill: var(--ts-accent);
+  /* rounds the tip and the barbs a little */
+  stroke: var(--ts-accent);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+/* Editing: an arrow that runs through a block or crosses another */
+.arrowWarn {
+  stroke: var(--ts-warning);
+  stroke-opacity: 1;
+}
+
+.arrowHeadWarn {
+  fill: var(--ts-warning);
+  stroke: var(--ts-warning);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+/* Labels of the arrows: pills over the lines (see the label layer) */
+.arrowLabels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.arrowLabel {
+  position: absolute;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 7px 2px;
+  border: 1px solid color-mix(in srgb, var(--ts-accent) 35%, var(--ts-bg));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ts-accent) 8%, var(--ts-bg));
+  color: var(--ts-accent);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 15px;
+}
+
+.empty {
+  margin: auto;
+  color: var(--ts-text-faint);
+  font-size: 0.85rem;
+}
+
+/* Nested: the opened block's area inside the enlarged card */
+.gridAreaNested {
+  margin: 0 10px 10px;
+  border: 1.5px dashed var(--ts-border-dashed);
+  border-radius: 7px;
+  background: var(--ts-sunken);
+  padding: 8px;
+}
+
+/* Nested text block: a plain reading surface, the text scrolls inside */
+.gridAreaText {
+  padding: 0;
+  border-style: solid;
+  background: var(--ts-surface);
+  overflow: hidden;
+}
+
+/* The level's 6×6 grid: six equal rows filling the screen, the same in view
+   and edit mode. Tracks come from the Viewer; empty columns use the variable
+   below. A card's description longer than its cells hold ends in "…"; only
+   a card that cannot fit even its title and footer makes the level zoom out
+   (see fitZoom). */
+.grid {
+  --ts-empty-col: minmax(0, 1fr);
+  flex: 1;
+  display: grid;
+  grid-template-rows: var(--ts-rows-full);
+  /* room for a short arrow between neighbours; empty cells make more room */
+  column-gap: 28px;
+  /* room for an arrow between rows, with its head and label */
+  row-gap: 24px;
+  align-content: space-evenly;
+  min-height: 0;
+  /* Proportions between a square (embedded, a chat column: cells as tall as
+     wide) and 2:1 (a laptop screen): the grid follows the screen within these
+     bounds instead of stretching with it, centred */
+  flex: none;
+  --ts-grid-margin: clamp(24px, 4cqi, 56px);
+  /* With fewer rows shown (see --ts-row-share) the bounds scale with them */
+  --ts-row-share: 1;
+  width: min(calc(100cqw - 2 * var(--ts-grid-margin)), calc(200cqh * var(--ts-row-share)));
+  height: min(calc((100cqw - 2 * var(--ts-grid-margin)) / var(--ts-row-share)), 100cqh);
+  align-self: center;
+  margin-block: auto;
+  /* room beside the outer columns for an arrow going around blocks (the way
+     back of a loop) and its label; less on narrower levels */
+  margin-inline: var(--ts-grid-margin);
+}
+
+/* Cards stay within their cells; the fit zoom deals with what does not fit */
+.grid > * {
+  min-height: 0;
+}
+
+/* Phone width, viewing: the six columns keep their structure, with narrow
+   gaps (horizontal arrows then have no room for labels); only the rows in use,
+   as tall as their content, and empty columns and rows shrink away */
+@container ts-level (max-width: 560px) {
+  .grid {
+    /* still room for an arrow and its head between neighbours */
+    column-gap: 16px;
+    --ts-grid-margin: 28px;
+  }
+  .grid:not(.gridEditing) {
+    --ts-empty-col: 0px;
+    height: auto;
+    margin-block: 0 auto;
+    grid-template-rows: var(--ts-rows-compact);
+  }
+  .grid:not(.gridEditing) > * {
+    min-height: auto;
+  }
+}
+
+/* Edit mode: the cells of the grid, behind the cards */
+.cell {
+  border: 1px dashed var(--ts-divider);
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+}
+
+/* Edit mode: a card with more text than its cells hold is cut off */
+.gridEditing {
+  align-content: stretch;
+}
+
+.cellFree {
+  cursor: pointer;
+  color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.cellFree:hover {
+  border-color: var(--ts-accent);
+  color: var(--ts-accent);
+  background: var(--ts-accent-soft);
+}
+
+/* Where a dragged block would land; red when the place is taken */
+.dropArea {
+  border: 2px solid var(--ts-accent);
+  border-radius: 10px;
+  background: var(--ts-accent-soft);
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.8;
+}
+
+.dropAreaBad {
+  border-color: var(--ts-danger);
+  background: var(--ts-danger-soft);
+}
+
+/* Edit mode: tools for the current level, in the header */
+.levelTools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.groupBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--ts-border);
+  border-radius: 6px;
+  background: var(--ts-surface);
+  color: var(--ts-text-secondary);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.groupBtn:hover {
+  border-color: var(--ts-border-strong);
+  color: var(--ts-text);
+}
+
+.groupBtnActive,
+.groupBtnActive:hover {
+  background: var(--ts-strong);
+  border-color: var(--ts-strong);
+  color: var(--ts-on-strong);
+}
+
+.layoutHint {
+  align-self: center;
+  font-size: 0.72rem;
+  color: var(--ts-warning);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+  white-space: nowrap;
+}
+
+.fullHint {
+  align-self: center;
+  font-size: 0.72rem;
+  color: var(--ts-text-faint);
+}
+
+/* While linking: what is going on and how to stop, floating at the bottom */
+.linkBar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 16px;
+  border-radius: 999px;
+  background: var(--ts-strong);
+  color: var(--ts-on-strong);
+  font-size: 0.78rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+}
+
+.linkBarCancel {
+  all: unset;
+  cursor: pointer;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ts-on-strong) 14%, transparent);
+  font-weight: 500;
+}
+
+.linkBarCancel:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ts-on-strong) 24%, transparent);
+}
+
+.linkBarCancel:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+img.slideIcon { width: 1em; height: 1em; }
+
+/* Header: copy a link to the screen, viewing only */
+.linkBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--ts-icon);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.linkBtn:hover,
+.linkBtn:focus-visible {
+  background: var(--ts-accent-soft);
+  color: var(--ts-accent);
+}

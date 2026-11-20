@@ -1,0 +1,78 @@
+/* The opened text block: fills the level's area and scrolls inside it */
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+  cursor: auto;
+}
+
+/* Reading width: about 70 characters a line, centred on the level */
+.column {
+  max-width: 70ch;
+  margin: 0 auto;
+  font-size: 0.95rem;
+  color: var(--ts-text);
+}
+
+.body {
+  line-height: 1.6;
+}
+
+.body > :first-child { margin-top: 0; }
+.body > :last-child { margin-bottom: 0; }
+.body p, .body ul, .body ol, .body pre { margin: 0 0 12px; }
+.body ul, .body ol { padding-left: 22px; }
+.body li + li { margin-top: 3px; }
+.body h3, .body h4, .body h5 { margin: 20px 0 8px; font-size: 1rem; }
+.body a { color: var(--ts-accent); }
+
+.body code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--ts-bg);
+  font: 0.85em ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.body pre {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--ts-bg);
+  overflow-x: auto;
+}
+
+.body pre code {
+  padding: 0;
+  background: none;
+}
+
+.empty {
+  margin: 0;
+  color: var(--ts-text-faint);
+  text-align: center;
+}
+
+.editor {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-height: 180px;
+  padding: 10px 12px;
+  border: 1px solid var(--ts-border);
+  border-radius: 8px;
+  background: var(--ts-surface);
+  font: 0.85rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: inherit;
+  resize: vertical;
+  outline: none;
+}
+
+.editor:focus {
+  border-color: var(--ts-accent);
+}
+
+.preview {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--ts-border);
+}

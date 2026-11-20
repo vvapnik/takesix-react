@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/vvapnik/takesix-react/compare/v1.0.1...v1.1.0) (2026-11-20)
+
+
+### Features
+
+* **viewer:** colour blocks by tone and pick it in the editor ([78349dd](https://github.com/vvapnik/takesix-react/commit/78349dd1657e67185a87a50c2cc8f7ea08d770c8))
+* **viewer:** colour blocks by tone and pick it in the editor ([64e0e29](https://github.com/vvapnik/takesix-react/commit/64e0e299b0e5f2e79d377eabfd389ca01565f5a1))
+
+
+### Bug Fixes
+
+* **style:** fill a one-column card with its SVG icon ([e6b1ed2](https://github.com/vvapnik/takesix-react/commit/e6b1ed2dbef0c49d9500e5737963057e1142b5b6))
+* **style:** fill a one-column card with its SVG icon ([bd6e5bd](https://github.com/vvapnik/takesix-react/commit/bd6e5bdd6ea50c2001c9f05731bce2957f1f2907))
+
 ## [1.0.1](https://github.com/vvapnik/takesix-react/compare/v1.0.0...v1.0.1) (2026-11-20)
 
 

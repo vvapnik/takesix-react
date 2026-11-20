@@ -23,6 +23,12 @@
   --ts-danger-soft: #fee2e2;
   --ts-danger-border: #f5c2c2;
   --ts-warning: #b54708;
+  --ts-success: #067647;
+  /* Block tones (FORMAT.md, Tone): fill and border are mixed from these */
+  --ts-tone-accent: var(--ts-accent);
+  --ts-tone-success: var(--ts-success);
+  --ts-tone-warning: var(--ts-warning);
+  --ts-tone-danger: var(--ts-danger);
   color-scheme: light;
 
   height: 100%;
@@ -64,6 +70,7 @@
   --ts-danger-soft: #3a1d1f;
   --ts-danger-border: #7f2d2d;
   --ts-warning: #fdb022;
+  --ts-success: #47cd89;
   color-scheme: dark;
 }
 
@@ -90,6 +97,7 @@
     --ts-danger-soft: #3a1d1f;
     --ts-danger-border: #7f2d2d;
     --ts-warning: #fdb022;
+    --ts-success: #47cd89;
     color-scheme: dark;
   }
 }

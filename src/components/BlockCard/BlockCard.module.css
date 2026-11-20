@@ -1,6 +1,7 @@
 .card {
-  background: var(--ts-surface);
-  border: 1px solid var(--ts-border);
+  /* A tone (data-tone) sets these; states below set the border directly */
+  background: var(--ts-card-fill, var(--ts-surface));
+  border: 1px solid var(--ts-card-line, var(--ts-border));
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -286,7 +287,7 @@
 }
 
 .card:hover {
-  border-color: var(--ts-border-strong);
+  border-color: var(--ts-card-line-hover, var(--ts-border-strong));
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
@@ -516,8 +517,8 @@
    layer, clipped to the symbol, draws the line (::before) and the fill
    (::after, 1px inside). The drop shadow sits on the unclipped layer. */
 .card:is([data-shape='decision'], [data-shape='io'], [data-shape='loop-start'], [data-shape='loop-end']) {
-  --ts-shape-line: var(--ts-border);
-  --ts-shape-fill: var(--ts-surface);
+  --ts-shape-line: var(--ts-card-line, var(--ts-border));
+  --ts-shape-fill: var(--ts-card-fill, var(--ts-surface));
   --ts-io-skew: 14px;
   --ts-loop-cut: 12px;
   background: transparent;
@@ -567,7 +568,7 @@
 }
 
 /* States that colour a card's border colour the symbol's line instead */
-.card[data-shape]:hover { --ts-shape-line: var(--ts-border-strong); }
+.card[data-shape]:hover { --ts-shape-line: var(--ts-card-line-hover, var(--ts-border-strong)); }
 .card[data-shape]:hover .outline { filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1)); }
 .card[data-shape]:is(.cardSelected, .cardConnectingSource, .cardConnected, .cardResizing),
 .card[data-shape].cardConnectable:hover { --ts-shape-line: var(--ts-accent); }
@@ -605,6 +606,22 @@
 /* Loop limits: a little more room by the cut corners */
 .card[data-shape='loop-start'] .header { padding-top: 16px; }
 .card[data-shape='loop-end'] .footer { padding-bottom: 14px; }
+
+/* Tone: colour by meaning or a colour of the block's own (--ts-tone, set by
+   BlockCard). A light fill and a border mixed with the theme's surface, so
+   one colour works in the light and the dark theme and the text keeps the
+   theme's colours and contrast. Flowchart symbols take them through
+   --ts-shape-line and --ts-shape-fill. */
+.card[data-tone] {
+  --ts-card-fill: color-mix(in srgb, var(--ts-tone) 12%, var(--ts-surface));
+  --ts-card-line: color-mix(in srgb, var(--ts-tone) 55%, var(--ts-surface));
+  --ts-card-line-hover: var(--ts-tone);
+}
+
+/* The fill takes a little contrast from the muted description: a darker grey */
+.card[data-tone] .description {
+  color: var(--ts-text-secondary);
+}
 
 /* An SVG icon: the size of an emoji icon */
 img.icon { width: 1em; height: 1em; }

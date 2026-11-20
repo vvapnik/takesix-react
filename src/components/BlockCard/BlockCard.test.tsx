@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Block } from '@takesix/core'
 import type { ComponentProps } from 'react'
@@ -29,6 +29,21 @@ describe('BlockCard', () => {
     expect(screen.getByText('Web app')).toBeInTheDocument()
     expect(screen.getByText('Frontend')).toBeInTheDocument()
     expect(card.dataset.at).toBe('A1:C2')
+  })
+
+  it('colours the card by its tone, a theme token or a colour of its own', () => {
+    expect(setup({ block: { ...block, tone: 'danger' } }).card.style.getPropertyValue('--ts-tone')).toBe('var(--ts-tone-danger)')
+  })
+
+  it('draws a colour of its own, and neutral or unknown tones as a plain card', () => {
+    const own = setup({ block: { ...block, tone: '#7a5af8' } }).card
+    expect(own.dataset.tone).toBe('#7a5af8')
+    expect(own.style.getPropertyValue('--ts-tone')).toBe('#7a5af8')
+    for (const tone of ['neutral', 'pink', '#12345'] as const) {
+      const { card } = setup({ block: { ...block, tone: tone as never } })
+      expect(card.dataset.tone).toBeUndefined()
+      cleanup()
+    }
   })
 
   it('has no edit controls when reading', () => {

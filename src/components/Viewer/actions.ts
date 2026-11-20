@@ -1,4 +1,4 @@
-import type { BlockShape, Link } from '@takesix/core'
+import type { BlockShape, BlockTone, Link } from '@takesix/core'
 import type { LinkEdit } from '../LinkPopover/index.js'
 
 /** Edits the viewer asks for. All of them are optional: without one, the matching control is hidden. */
@@ -23,6 +23,8 @@ export interface ViewerActions {
   setDetails: (id: string, details: string) => void
   /** Draws a block as a flowchart symbol; `'process'` is the plain card. */
   setShape: (id: string, shape: BlockShape) => void
+  /** Colours a block by meaning or with a colour of its own; `undefined` is neutral. */
+  setTone: (id: string, tone: BlockTone | undefined) => void
   /** Turns an empty block into a text block: it then opens into text, not blocks. */
   makeText: (id: string) => void
   /** Turns an empty text block back into one that holds blocks, and adds the first. */

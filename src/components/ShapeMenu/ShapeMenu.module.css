@@ -20,6 +20,7 @@
 
 .option {
   all: unset;
+  position: relative;
   box-sizing: border-box;
   width: 40px;
   height: 34px;
@@ -46,6 +47,57 @@
 .optionActive:hover {
   background: var(--ts-accent);
   color: #ffffff;
+}
+
+/* Colours: the five tones and one of the block's own, below the symbols */
+.tones {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--ts-divider);
+}
+
+.tone {
+  width: auto;
+  height: 28px;
+}
+
+/* The tone's fill and border, as on a card */
+.dot {
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ts-surface);
+  border: 1.5px solid var(--ts-border-strong);
+}
+
+.dot[data-tone] {
+  background: color-mix(in srgb, var(--ts-tone) 12%, var(--ts-surface));
+  border-color: var(--ts-tone);
+}
+
+/* No colour of its own yet: a colour wheel */
+.dotOwn:not([data-tone]) {
+  border: none;
+  background: conic-gradient(#f04438, #fdb022, #47cd89, #2e90fa, #7a5af8, #ee46bc, #f04438);
+}
+
+.toneActive,
+.toneActive:hover {
+  background: var(--ts-accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--ts-accent);
+}
+
+/* The system colour picker opens from the swatch; the input itself is not seen */
+.colorInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .caption {

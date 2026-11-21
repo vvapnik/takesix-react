@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0](https://github.com/vvapnik/takesix-react/compare/v1.1.0...v1.2.0) (2026-11-21)
+
+
+### Features
+
+* **viewer:** journeys — guided tours with a floating bar ([a5f3f62](https://github.com/vvapnik/takesix-react/commit/a5f3f62cb9cedf36431c8978eb2a3e3d903a4383))
+* **viewer:** play journeys with a floating bar, and make them ([5d1db8f](https://github.com/vvapnik/takesix-react/commit/5d1db8fe33c65eb8334495e2be7e2b3de069555a))
+* **viewer:** reach any screen level by level, as a reader would ([074d3de](https://github.com/vvapnik/takesix-react/commit/074d3dedb9f0b4649effb4dd782147c4fcd87623))
+
 ## [1.1.0](https://github.com/vvapnik/takesix-react/compare/v1.0.1...v1.1.0) (2026-11-20)
 
 

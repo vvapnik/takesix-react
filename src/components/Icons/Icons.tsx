@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 export function PlusIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -76,6 +78,56 @@ export function CheckIcon() {
   return (
     <svg width="12" height="12" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="5 12 10 17 19 7" />
+    </svg>
+  )
+}
+
+const playerIcon = (children: ReactNode) => (
+  <svg width="14" height="14" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+    {children}
+  </svg>
+)
+
+/** Journey: the next step */
+export function NextIcon() {
+  return playerIcon(<><polygon points="5 5 15 12 5 19" /><line x1="19" y1="5" x2="19" y2="19" strokeWidth="2.5" /></>)
+}
+
+/** Journey: the step before */
+export function PreviousIcon() {
+  return playerIcon(<><polygon points="19 5 9 12 19 19" /><line x1="5" y1="5" x2="5" y2="19" strokeWidth="2.5" /></>)
+}
+
+export function PlayIcon() {
+  return playerIcon(<polygon points="7 4 20 12 7 20" />)
+}
+
+export function PauseIcon() {
+  return playerIcon(<><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></>)
+}
+
+/** Three dots: more actions */
+export function MoreIcon() {
+  return playerIcon(<><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></>)
+}
+
+/** A stack of cards: the journey's steps */
+export function StackIcon() {
+  return (
+    <svg width="16" height="16" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+      <rect x="4" y="11" width="16" height="9" rx="2" />
+      <path d="M6 8h12M8 5h8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/** Six dots: something to drag */
+export function GripIcon() {
+  return (
+    <svg width="10" height="14" aria-hidden="true" viewBox="0 0 10 14" fill="currentColor">
+      <circle cx="3" cy="3" r="1.2" /><circle cx="7" cy="3" r="1.2" />
+      <circle cx="3" cy="7" r="1.2" /><circle cx="7" cy="7" r="1.2" />
+      <circle cx="3" cy="11" r="1.2" /><circle cx="7" cy="11" r="1.2" />
     </svg>
   )
 }

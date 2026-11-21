@@ -129,3 +129,28 @@ button.item {
   color: var(--ts-text-faint);
   font-size: 0.72rem;
 }
+
+/* Journeys: a group above the other items */
+.section {
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--ts-border);
+}
+
+.sectionLabel {
+  margin: 4px 10px 2px;
+  font-size: 0.7rem;
+  color: var(--ts-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.item[aria-checked='true'] {
+  color: var(--ts-accent);
+}
+
+.itemNote {
+  float: right;
+  font-size: 0.72rem;
+  color: var(--ts-text-muted);
+}

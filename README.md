@@ -89,7 +89,9 @@ after the first paint, and the whole page then reflows.
 | `menu` | `boolean \| MenuOptions` | Logo button in the bottom-left corner while not editing: open in the online editor, save as HTML/JSON, version. Off by default. |
 | `view` | `ViewAddress` | The screen shown: `{ in: id }`, `{ at: id }` or `null` (top level). With `onViewChange` it controls the screen; leave it out and the component keeps it itself. |
 | `onViewChange` | `(view) => void` | The reader moved to another screen. |
-| `syncUrl` | `boolean` | Keep the screen in the page URL, with history. Off by default; ignored while `view` is set. See [Links to screens](#links-to-screens). |
+| `syncUrl` | `boolean` | Keep the screen (and the journey step) in the page URL, with history. Off by default; ignored while `view` is set. See [Links to screens](#links-to-screens). |
+| `journey` | `JourneyAddress \| null` | The journey on screen, `{ journey: id, step }` (`step` from 0), or `null`. With `onJourneyChange` it controls the journey, e.g. from your own Journeys menu; leave it out and the component keeps it itself. See [Journeys](#journeys). |
+| `onJourneyChange` | `(journey) => void` | A journey started, moved to another step or closed. |
 | `className` | `string` | Extra class for the root element. |
 
 ### Links to screens
@@ -110,10 +112,35 @@ a link button on hover, and the menu has **Copy link to this screen**.
 `formatViewAddress` and `resolveView` from `@takesix/core` read and write
 addresses.
 
+### Journeys
+
+A document can hold guided tours, `journeys` (see
+[FORMAT.md](https://github.com/vvapnik/takesix-core/blob/main/FORMAT.md#journeys)).
+While one is on, a floating bar at the bottom shows the step and its caption,
+in every mode, editing included: previous and next, play and pause (each step
+stays its `duration`, 6 seconds by default), and close. Space and → go to the
+next step, ← back, Esc closes. Moving from step to step zooms level by level,
+up to the screen both steps share and down again, as if the reader clicked;
+so do Back and Forward, and any `view` change from outside. Moving around on
+your own pauses the journey.
+
+Start a journey from the menu (Journeys) or with the `journey` prop. With
+`syncUrl` the step is in the URL, `#journey=<id>&step=<n>` (from 1), next to
+the screen, so a reload or a shared link opens the same step. Where the
+document can be edited (`onChange`), the menu also has **New journey**, the
+bar's + button adds the screen on view as a step after the current one, and
+its ⋯ button removes a step, renames the journey or the step's caption, or
+deletes the journey. The stack button lists all steps: click one to show it;
+where the document can be edited, remove a step or drag it to another place
+(or move it with Alt+↑ / Alt+↓). Step `notes` are
+kept but not shown.
+
 ### Menu
 
 `menu` (or `menu={{ ... }}`) adds a round logo button with a small menu:
 
+- **Journeys**: the document's journeys, and **New journey** where it can be
+  edited (see [Journeys](#journeys)).
 - **Open in editor** opens the diagram in the
   [online editor](https://takesix.vapnik.de/editor/). The document travels in
   the URL fragment (`#takesix=…`, compressed), which is never sent to a

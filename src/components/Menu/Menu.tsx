@@ -46,12 +46,22 @@ function browserDownload({ name, mimeType, text }: MenuFile) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-/** Round logo button in the bottom-left corner with a small menu: editor, save, version. */
-export function Menu({ document: doc, options, onCopyLink }: {
+/** The Journeys section of the menu. */
+export interface MenuJourneys {
+  /** Id of the journey on screen. */
+  active?: string
+  onStart: (id: string) => void
+  /** Makes a new journey; without it there is no "New journey" (read-only documents). */
+  onCreate?: () => void
+}
+
+/** Round logo button in the bottom-left corner with a small menu: journeys, editor, save, version. */
+export function Menu({ document: doc, options, onCopyLink, journeys }: {
   document: TakeSixDocument
   options: MenuOptions
   /** Copies a link to the screen on view; resolves to whether it worked. */
   onCopyLink?: () => Promise<boolean>
+  journeys?: MenuJourneys
 }) {
   const [open, setOpen] = useState(false)
   // Feedback of "Copy link to this screen"
@@ -106,6 +116,34 @@ export function Menu({ document: doc, options, onCopyLink }: {
     <div ref={rootRef} className={styles.menuRoot}>
       {open && (
         <div id={menuId} className={styles.menu} role="menu" aria-label="TakeSix">
+          {journeys && (doc.journeys?.length || journeys.onCreate) && (
+            <div className={styles.section} role="group" aria-label="Journeys">
+              <p className={styles.sectionLabel}>Journeys</p>
+              {doc.journeys?.map(j => (
+                <button
+                  key={j.id}
+                  type="button"
+                  className={styles.item}
+                  role="menuitemradio"
+                  aria-checked={journeys.active === j.id}
+                  onClick={() => { journeys.onStart(j.id); setOpen(false) }}
+                >
+                  {j.title}
+                  <span className={styles.itemNote}>{j.steps.length} {j.steps.length === 1 ? 'step' : 'steps'}</span>
+                </button>
+              ))}
+              {journeys.onCreate && (
+                <button
+                  type="button"
+                  className={styles.item}
+                  role="menuitem"
+                  onClick={() => { journeys.onCreate!(); setOpen(false) }}
+                >
+                  New journey
+                </button>
+              )}
+            </div>
+          )}
           <a
             className={styles.item}
             role="menuitem"

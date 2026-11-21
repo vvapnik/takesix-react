@@ -33,7 +33,15 @@ import { useCards } from './hooks/useCards.js'
 import { useDragAndDrop } from './hooks/useDragAndDrop.js'
 import { useFitZoom } from './hooks/useFitZoom.js'
 import { useZoomAnimation } from './hooks/useZoomAnimation.js'
+import { ZOOM_MS } from '../../utils/motion.js'
 import styles from './Viewer.module.css'
+
+/** How many levels two paths share from the top. */
+function sharedDepth(a: readonly string[], b: readonly string[]): number {
+  let i = 0
+  while (i < a.length && i < b.length && a[i] === b[i]) i++
+  return i
+}
 
 export type { ViewerActions } from './actions.js'
 
@@ -190,6 +198,7 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
   }, [doc.links, connectingFrom])
 
   function drillIn(block: Block, cardRect: CardRect, report = true) {
+    if (report) route.current = null
     zoomIn(cardRect)
     setPath(p => [...p, { id: block.id, cardRect }])
     setHighlight(null)
@@ -210,6 +219,7 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
   /** Up to the level at `depth` (0 = top); the screen being left shrinks into its card there. */
   function goBack(depth: number, nextHighlight: string | null = null, report = true) {
     if (depth >= livePath.length || isAnimating.current) return
+    if (report) route.current = null
     const target = livePath.slice(0, depth)
     zoomOut(livePath[depth]!.id)
     setPath(target)
@@ -225,28 +235,55 @@ export function Viewer({ document: doc, editing, actions, typographyTick, view, 
   const ownViewRef = useRef(ownView)
   ownViewRef.current = ownView
 
-  // A new address from outside (back/forward, a link, the host): go there.
-  // One level up or down zooms like a click; anything further jumps.
-  useEffect(() => {
-    if (sameView(view, ownViewRef.current)) return
-    const next = resolveView(doc, view, index)
+  // A new address from outside (back/forward, a link, a journey, the host):
+  // go there the way a reader would, one level at a time — up to the level
+  // both screens share, then down — each hop zooming like a click.
+  const route = useRef<{ path: string[]; highlight: string | null } | null>(null)
+  const routeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const hopRef = useRef<() => void>(() => {})
+  hopRef.current = () => {
+    const target = route.current
+    if (!target) return
+    // A zoom still running (the reader clicked meanwhile): try again shortly
+    if (isAnimating.current) {
+      routeTimer.current = setTimeout(() => hopRef.current(), 60)
+      return
+    }
     const current = livePath.map(p => p.id)
-    const isPrefix = (a: string[], b: string[]) => a.length <= b.length && a.every((id, i) => b[i] === id)
-    if (next.path.length < current.length && isPrefix(next.path, current) && !isAnimating.current) {
-      goBack(next.path.length, next.highlight ?? null, false)
+    const shared = sharedDepth(current, target.path)
+    const next = () => { routeTimer.current = setTimeout(() => hopRef.current(), ZOOM_MS + 40) }
+    if (current.length > shared) {
+      // Up one level; the last hop up may land on the highlighted block
+      const depth = current.length - 1
+      goBack(depth, depth === target.path.length ? target.highlight : null, false)
+      next()
       return
     }
-    const child = next.path[current.length]
-    const card = child !== undefined && next.path.length === current.length + 1 && isPrefix(current, next.path)
-      ? cardEls.current.get(child) : undefined
-    if (card && !next.highlight) {
-      const r = card.getBoundingClientRect()
-      drillIn(index.get(child!)!.block, { left: r.left, top: r.top, width: r.width, height: r.height }, false)
-      return
+    if (current.length < target.path.length) {
+      const child = target.path[current.length]!
+      const card = cardEls.current.get(child)
+      const block = index.get(child)?.block
+      if (card && block) {
+        const r = card.getBoundingClientRect()
+        drillIn(block, { left: r.left, top: r.top, width: r.width, height: r.height }, false)
+        next()
+        return
+      }
+      // No card to zoom from (not laid out): jump the rest of the way
+      setPath(target.path.map(id => ({ id })))
+      setLayoutKey(k => k + 1)
     }
-    setPath(next.path.map(id => ({ id })))
-    setHighlight(next.highlight ?? null)
-    setLayoutKey(k => k + 1)
+    setHighlight(target.highlight)
+    route.current = null
+  }
+  useEffect(() => () => clearTimeout(routeTimer.current), [])
+
+  useEffect(() => {
+    if (sameView(view, ownViewRef.current) && !route.current) return
+    const next = resolveView(doc, view, index)
+    clearTimeout(routeTimer.current)
+    route.current = { path: next.path, highlight: next.highlight ?? null }
+    hopRef.current()
     // Only the address changes: the rest of the state is read through refs and the latest render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view])

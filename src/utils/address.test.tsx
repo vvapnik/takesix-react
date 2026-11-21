@@ -97,9 +97,26 @@ describe('history', () => {
     expect(heading()).toBe('API')
     pop('')
     await waitFor(() => expect(heading()).toBe('Shop'))
+    // Two levels down: through API, one zoom at a time
     pop('#in=orders')
-    expect(heading()).toBe('Orders')
+    await waitFor(() => expect(heading()).toBe('API'), { timeout: 3000 })
+    await waitFor(() => expect(heading()).toBe('Orders'), { timeout: 3000 })
     push.mockRestore()
+  })
+
+  it('goes up to the shared level and down again, highlighting at the end', async () => {
+    setHash('#in=orders')
+    render(<TakeSix document={sampleDoc()} syncUrl />)
+    const seen: string[] = []
+    const observer = new MutationObserver(() => {
+      const h = heading()
+      if (h && seen[seen.length - 1] !== h) seen.push(h)
+    })
+    observer.observe(document.body, { subtree: true, childList: true, characterData: true })
+    pop('#at=db')
+    await waitFor(() => expect(card('db').className).toMatch(/cardHighlighted/), { timeout: 3000 })
+    observer.disconnect()
+    expect(seen).toEqual(['API', 'Shop'])
   })
 
   it('writes the top level as a URL without a fragment', async () => {
@@ -144,7 +161,8 @@ describe('controlled view', () => {
     // Controlled: syncUrl is ignored
     expect(window.location.hash).toBe('')
     await user.click(screen.getByRole('button', { name: 'home' }))
-    expect(heading()).toBe('Shop')
+    expect(heading()).toBe('API')
+    await waitFor(() => expect(heading()).toBe('Shop'), { timeout: 3000 })
   })
 })
 

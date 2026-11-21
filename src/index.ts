@@ -1,7 +1,7 @@
 export { TakeSix, type TakeSixProps, type Theme } from './components/TakeSix/index.js'
 export type { MenuOptions, MenuFile } from './components/Menu/index.js'
 export { createEditorLink, encodeDocument, readDocumentFromHash, DEFAULT_EDITOR_URL, MAX_LINK_LENGTH } from './utils/share.js'
-export type { TakeSixDocument, Block, Link, ViewAddress } from '@takesix/core'
+export type { TakeSixDocument, Block, Link, ViewAddress, Journey, JourneyStep, JourneyAddress } from '@takesix/core'
 export { screenLink } from './utils/address.js'
 export { PRELOADER_HTML, preloaderErrorHtml } from './utils/preloader.js'
 export { ZOOM_MS, ZOOM_EASE } from './utils/motion.js'

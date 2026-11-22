@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/vvapnik/takesix-react/compare/v1.2.0...v1.3.0) (2026-11-22)
+
+
+### Features
+
+* **viewer:** &lt;take-six&gt; web component for pages without React ([3e39c0d](https://github.com/vvapnik/takesix-react/commit/3e39c0d694f1472b98caa16f5a312a8a17cebfb4))
+* **viewer:** &lt;take-six&gt; web component for pages without React ([d7ca824](https://github.com/vvapnik/takesix-react/commit/d7ca8249ab45e9e0b052fc85326f8cd81d7d182c))
+
+
+### Bug Fixes
+
+* **viewer:** send journey keys only to the diagram in focus ([f4c0c88](https://github.com/vvapnik/takesix-react/commit/f4c0c88d00f1757c7baa07059d86896608fce214))
+
 ## [1.2.0](https://github.com/vvapnik/takesix-react/compare/v1.1.0...v1.2.0) (2026-11-21)
 
 

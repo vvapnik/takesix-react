@@ -22,6 +22,7 @@
       "types": "./dist/standalone/index.d.ts",
       "import": "./dist/standalone.js"
     },
+    "./element": "./dist/element.js",
     "./style.css": "./dist/style.css"
   },
   "files": [
@@ -32,7 +33,7 @@
   ],
   "scripts": {
     "dev": "vite examples --config vite.config.ts",
-    "build": "vite build --config vite.viewer.config.ts && vite build && vite build --config vite.cli.config.ts && tsc -p tsconfig.build.json",
+    "build": "vite build --config vite.viewer.config.ts && vite build && vite build --config vite.element.config.ts && vite build --config vite.cli.config.ts && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vite build --config vite.viewer.config.ts && vitest run",
     "test:watch": "vitest",

@@ -174,6 +174,25 @@ const { standaloneHtml } = await import('@takesix/react/standalone')
 <TakeSix document={doc} menu={{ html: () => standaloneHtml(doc) }} />
 ```
 
+### Pages without React
+
+To put a diagram on a page that has no React (docs, a blog, a wiki), load
+`dist/element.js` from a CDN. It registers the `<take-six>` web component,
+with React and the viewer inside (~350 KB, ~110 KB gzipped):
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@takesix/react@1/dist/element.js" defer></script>
+
+<take-six src="/diagrams/architecture.takesix.json" style="height: 480px"></take-six>
+```
+
+Without `src`, the element reads a `<script type="application/json">` inside
+it. Other attributes: `theme` (`auto`, `light`, `dark`), `view` (the screen to
+open, e.g. `in=api`) and `menu`. The diagram renders in a shadow root, so page
+styles and diagram styles stay apart; the element is 30rem tall unless the
+page sets a height. A self-contained HTML file (above) also works in an
+`<iframe>`. More on [the Embed page](https://takesix.vapnik.de/embed/).
+
 ### Theming
 
 All colours are CSS variables on the root element (`--ts-bg`, `--ts-surface`,

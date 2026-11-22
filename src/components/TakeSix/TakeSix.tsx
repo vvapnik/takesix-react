@@ -94,6 +94,7 @@ export function TakeSix({
   view: viewProp, onViewChange, syncUrl = false, journey: journeyProp, onJourneyChange, className,
 }: TakeSixProps) {
   const editing = onChange !== undefined && editingProp
+  const rootRef = useRef<HTMLDivElement>(null)
   const controlled = viewProp !== undefined
   const urlSynced = syncUrl && !controlled
   const journeyControlled = journeyProp !== undefined
@@ -231,6 +232,10 @@ export function TakeSix({
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return
       const target = e.target
       if (target instanceof Element && target.closest('input, textarea, select, button, a, [contenteditable=""], [contenteditable="true"]')) return
+      // With several diagrams on a page, keys belong to the one in focus;
+      // with nothing in focus, to any diagram playing a journey
+      const root = rootRef.current
+      if (root && target instanceof Element && target !== document.body && target !== document.documentElement && !e.composedPath().includes(root)) return
       if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'PageDown') goToStep(step + 1)
       else if (e.key === 'ArrowLeft' || e.key === 'PageUp') goToStep(step - 1)
       else if (e.key === 'Escape') closeJourney()
@@ -393,7 +398,6 @@ export function TakeSix({
     }
   }, [doc, onChange])
 
-  const rootRef = useRef<HTMLDivElement>(null)
   const typography = useTypographyReady(rootRef)
 
   return (
